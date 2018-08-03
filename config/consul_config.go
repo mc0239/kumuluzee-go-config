@@ -17,10 +17,19 @@ type consulConfigSource struct {
 func initConsulConfigSource(localConfig configSource) configSource {
 	var consulConfig consulConfigSource
 
-	client, err := api.NewClient(api.DefaultConfig())
+	clientConfig := api.DefaultConfig()
+
+	consulAddress := localConfig.Get("kumuluzee.config.consul.hosts")
+	if consulAddress != nil {
+		clientConfig.Address = consulAddress.(string)
+	}
+
+	client, err := api.NewClient(clientConfig)
 	if err != nil {
 		fmt.Printf("Couldn't create consul client: %s\n", err.Error())
 	}
+
+	fmt.Printf("Created consul client with config: %v\n", clientConfig)
 
 	consulConfig.client = client
 
@@ -59,7 +68,7 @@ func (c consulConfigSource) Watch(key string, callback func(key string, value st
 }
 
 func (c consulConfigSource) watch(key string, previousValue string, callback func(key string, value string), waitIndex uint64) {
-	t, err := time.ParseDuration("10s")
+	t, err := time.ParseDuration("10m")
 	if err != nil {
 		fmt.Printf("Couldn't parse duration for WaitTime: %s\n", err.Error())
 		return
@@ -73,7 +82,7 @@ func (c consulConfigSource) watch(key string, previousValue string, callback fun
 	key = strings.Replace(key, ".", "/", -1)
 	pair, meta, err := c.client.KV().Get(path.Join(c.path, key), &q)
 
-	fmt.Printf("Key: %s\nPair:\n%v err?: %v\n", key, pair, err)
+	//fmt.Printf("Key: %s\nPair:\n%v err?: %v\n", key, pair, err)
 
 	if pair != nil {
 		if string(pair.Value) != previousValue {

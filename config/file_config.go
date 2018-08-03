@@ -40,11 +40,16 @@ func (c fileConfigSource) Get(key string) interface{} {
 
 	// move deeper into maps for every dot delimiter
 	val := c.config
+	var assertOk bool
 	for i := 0; i < len(tree)-1; i++ {
 		if val == nil {
 			return nil
 		}
-		val = val[tree[i]].(map[string]interface{})
+		val, assertOk = val[tree[i]].(map[string]interface{})
+
+		if !assertOk {
+			return nil
+		}
 		//fmt.Printf("%d ::: %v\n", i, val)
 	}
 
