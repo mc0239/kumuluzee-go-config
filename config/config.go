@@ -65,6 +65,9 @@ func (c ConfigUtil) Get(key string) interface{} {
 	var val interface{}
 
 	for _, cs := range c.configSources {
+		if cs == nil { // TODO: temporary
+			continue
+		}
 		val = cs.Get(key)
 		if val != nil {
 			break
@@ -77,41 +80,41 @@ func (c ConfigUtil) Get(key string) interface{} {
 GetString calls Config.Get() function to retrieve the value and tries to type assert or type
 cast the value to type string.
 */
-func (c ConfigUtil) GetString(key string) string {
+func (c ConfigUtil) GetString(key string) (value string, ok bool) {
 	// try to type assert as string
 	svalue, ok := c.Get(key).(string)
 	if ok {
-		return svalue
+		return svalue, true
 	}
 	// try to type assert as byte array and cast to string
 	bvalue, ok := c.Get(key).([]byte)
 	if ok {
-		return string(bvalue)
+		return string(bvalue), true
 	}
 	// can't assert to string, return nil
-	return ""
+	return "", false
 }
 
 /*
 GetInt calls Config.Get() function to retrieve the value and tries to type assert or type
 cast the value to type int.
 */
-func (c ConfigUtil) GetInt(key string) int {
+func (c ConfigUtil) GetInt(key string) (value int, ok bool) {
 	// if value is type asserted as byte array, cast to string and convert to int
 	svalue, ok := c.Get(key).([]byte)
 	if ok {
 		ivalue, err := strconv.Atoi(string(svalue))
 		if err == nil {
-			return ivalue
+			return ivalue, true
 		}
 	}
 
 	// if value is type asserted as int, return it
 	ivalue, ok := c.Get(key).(int)
 	if ok {
-		return ivalue
+		return ivalue, true
 	}
 
 	// can't assert to int, return 0
-	return 0
+	return 0, false
 }
