@@ -18,7 +18,10 @@ import (
 
 type ConfigUtil struct {
 	configSources []configSource
+	Logger        logger
 }
+
+var lgr *logger
 
 type configSource interface {
 	Name() string
@@ -26,7 +29,11 @@ type configSource interface {
 	Watch(key string, callback func(key string, value string))
 }
 
-func Initialize(ext string, configPath string) ConfigUtil {
+func Initialize(ext string, configPath string, logLevel int) ConfigUtil {
+
+	lgr = &logger{
+		LogLevel: logLevel,
+	}
 
 	var envConfigSource, fileConfigSource, extConfigSource configSource
 
@@ -41,7 +48,10 @@ func Initialize(ext string, configPath string) ConfigUtil {
 		// TODO: invalid ext
 	}
 
-	k := ConfigUtil{[]configSource{envConfigSource, extConfigSource, fileConfigSource}}
+	k := ConfigUtil{
+		[]configSource{envConfigSource, extConfigSource, fileConfigSource},
+		*lgr,
+	}
 
 	return k
 }
@@ -72,7 +82,7 @@ func (c ConfigUtil) Get(key string) interface{} {
 		}
 		val = cs.Get(key)
 		if val != nil {
-			LogV(fmt.Sprintf("Found value for key %s, source: %s", key, cs.Name()))
+			lgr.logV(fmt.Sprintf("Found value for key %s, source: %s", key, cs.Name()))
 			break
 		}
 	}

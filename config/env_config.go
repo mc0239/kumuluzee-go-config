@@ -6,9 +6,9 @@ type envConfigSource struct {
 }
 
 func initEnvConfigSource() configSource {
-	LogV("Initializing EnvConfigSource")
+	lgr.logV("Initializing EnvConfigSource")
 	var c envConfigSource
-	LogV("Initialized EnvConfigSource")
+	lgr.logV("Initialized EnvConfigSource")
 	return c
 }
 
