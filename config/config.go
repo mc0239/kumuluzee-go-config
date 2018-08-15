@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"strconv"
 )
 
@@ -20,6 +21,7 @@ type ConfigUtil struct {
 }
 
 type configSource interface {
+	Name() string
 	Get(key string) interface{}
 	Watch(key string, callback func(key string, value string))
 }
@@ -70,6 +72,7 @@ func (c ConfigUtil) Get(key string) interface{} {
 		}
 		val = cs.Get(key)
 		if val != nil {
+			LogV(fmt.Sprintf("Found value for key %s, source: %s", key, cs.Name()))
 			break
 		}
 	}

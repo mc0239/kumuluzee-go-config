@@ -14,23 +14,27 @@ type fileConfigSource struct {
 }
 
 func initFileConfigSource(configPath string) configSource {
+	LogV("Initializing FileConfigSource")
 	var c fileConfigSource
 
 	joinedPath := path.Join(configPath, "config.yaml")
 
+	LogV(fmt.Sprintf("Config file path: %s\n", joinedPath))
+
 	bytes, err := ioutil.ReadFile(joinedPath)
 	if err != nil {
-		fmt.Printf("Failed to read file %s, error: %s\n", joinedPath, err.Error())
+		LogE(fmt.Sprintf("Failed to read file on path: %s, error: %s", joinedPath, err.Error()))
 		return nil
 	}
 	//fmt.Printf("Read: %s", bytes)
 
 	err = yaml.Unmarshal(bytes, &c.config)
 	if err != nil {
-		fmt.Printf("Failed tu unmarshal yaml: %s\n", err.Error())
+		LogE(fmt.Sprintf("Failed tu unmarshal yaml: %s", err.Error()))
 		return nil
 	}
 
+	LogV("Initialized FileConfigSource")
 	return c
 }
 
@@ -58,4 +62,8 @@ func (c fileConfigSource) Get(key string) interface{} {
 
 func (c fileConfigSource) Watch(key string, callback func(key string, value string)) {
 	return
+}
+
+func (c fileConfigSource) Name() string {
+	return "File"
 }

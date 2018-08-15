@@ -15,6 +15,7 @@ type consulConfigSource struct {
 }
 
 func initConsulConfigSource(localConfig configSource) configSource {
+	LogV("Initializing ConsulConfigSource")
 	var consulConfig consulConfigSource
 
 	clientConfig := api.DefaultConfig()
@@ -26,10 +27,11 @@ func initConsulConfigSource(localConfig configSource) configSource {
 
 	client, err := api.NewClient(clientConfig)
 	if err != nil {
-		fmt.Printf("Couldn't create consul client: %s\n", err.Error())
+		LogE(fmt.Sprintf("Failed to create Consul client: %s", err.Error()))
+		return nil
 	}
 
-	fmt.Printf("Created consul client with config: %v\n", clientConfig)
+	LogI(fmt.Sprintf("Consul client address set to %v", clientConfig.Address))
 
 	consulConfig.client = client
 
@@ -38,8 +40,10 @@ func initConsulConfigSource(localConfig configSource) configSource {
 	version := localConfig.Get("kumuluzee.version")
 
 	consulConfig.path = fmt.Sprintf("environments/%s/services/%s/%s/config", envName, name, version)
-	fmt.Printf("consul KV namespace: %s\n", consulConfig.path)
 
+	LogI(fmt.Sprintf("Consul key-value namespace: %s", consulConfig.path))
+
+	LogV("Initialized ConsulConfigSource")
 	return consulConfig
 }
 
@@ -52,7 +56,7 @@ func (c consulConfigSource) Get(key string) interface{} {
 
 	pair, _, err := kv.Get(path.Join(c.path, key), nil)
 	if err != nil {
-		fmt.Printf("Error getting value: %v\n", err)
+		LogW(fmt.Sprintf("Error getting value: %v", err))
 		return nil
 	}
 
@@ -64,15 +68,20 @@ func (c consulConfigSource) Get(key string) interface{} {
 }
 
 func (c consulConfigSource) Watch(key string, callback func(key string, value string)) {
+	LogI(fmt.Sprintf("Creating a watch for key %s, source: %s", key, c.Name()))
 	go c.watch(key, "", callback, 0)
 }
 
 func (c consulConfigSource) watch(key string, previousValue string, callback func(key string, value string), waitIndex uint64) {
+
+	// TODO: have a parameter for watch duration, (likely reads from config.yaml?)
 	t, err := time.ParseDuration("10m")
 	if err != nil {
-		fmt.Printf("Couldn't parse duration for WaitTime: %s\n", err.Error())
+		LogW(fmt.Sprintf("Failed to parse duration for WaitTime: %s, using default value: %s", err.Error(), t))
 		return
 	}
+
+	LogV(fmt.Sprintf("Set a watch on key %s with %s wait time", key, t))
 
 	q := api.QueryOptions{
 		WaitIndex: waitIndex,
@@ -83,6 +92,7 @@ func (c consulConfigSource) watch(key string, previousValue string, callback fun
 	pair, meta, err := c.client.KV().Get(path.Join(c.path, key), &q)
 
 	//fmt.Printf("Key: %s\nPair:\n%v err?: %v\n", key, pair, err)
+	LogV(fmt.Sprintf("Watch on key %s hit %s wait time", key, t))
 
 	if pair != nil {
 		if string(pair.Value) != previousValue {
@@ -93,6 +103,14 @@ func (c consulConfigSource) watch(key string, previousValue string, callback fun
 		if previousValue != "" {
 			callback(key, "")
 		}
-		c.watch(key, "", callback, meta.LastIndex)
+		var lastIndex uint64
+		if meta != nil {
+			lastIndex = meta.LastIndex
+		}
+		c.watch(key, "", callback, lastIndex)
 	}
+}
+
+func (c consulConfigSource) Name() string {
+	return "Consul"
 }
