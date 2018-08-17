@@ -41,9 +41,8 @@ type configSource interface {
 }
 
 func NewUtil(options Options) Util {
-	lgr := logm.Logm{
-		LogLevel: options.LogLevel,
-	}
+	lgr := logm.New("Kumuluz-config")
+	lgr.LogLevel = options.LogLevel
 
 	configs := make([]configSource, 0)
 
@@ -79,10 +78,8 @@ func NewUtil(options Options) Util {
 }
 
 func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
-
-	lgr := logm.Logm{
-		LogLevel: options.LogLevel,
-	}
+	lgr := logm.New("Kumuluz-config")
+	lgr.LogLevel = options.LogLevel
 
 	options.LogLevel = 5
 	util := NewUtil(options)
