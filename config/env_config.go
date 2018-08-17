@@ -1,14 +1,18 @@
 package config
 
-import "os"
+import (
+	"os"
+
+	"github.com/mc0239/logm"
+)
 
 type envConfigSource struct {
 }
 
-func initEnvConfigSource() configSource {
-	lgr.logV("Initializing EnvConfigSource")
+func initEnvConfigSource(lgr *logm.Logm) configSource {
+	lgr.LogV("Initializing EnvConfigSource")
 	var c envConfigSource
-	lgr.logV("Initialized EnvConfigSource")
+	lgr.LogV("Initialized EnvConfigSource")
 	return c
 }
 

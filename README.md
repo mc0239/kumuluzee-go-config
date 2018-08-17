@@ -34,58 +34,50 @@ Each configuration source has its own priority, meaning values from configuratio
 
 ## Usage
 
-Properties can be <s>held in a struct using `config.Bundle` or</s> retrieved by using `config.Util` interface functions.
+Properties can be <s>held in a struct using `config.Bundle` or</s> retrieved by using `config.Util` methods.
 
-<s>**ConfigBundle(ConfigurationObject)**
+**config.NewBundle(prefixKey, fields, options)**
 
-Creates new object which will automatically load and hold configuration properties. Function accepts object with described properties.
+**prefixKey** (string): value represents the prefix key for the configuration property keys use "" (empty string) for no prefix.
 
-ConfigurationObject is an object with configuration properties where each property can have following options:
-* **type** (String): type of a field. Possible types: `'number'`, `'string'`, `'boolean'`, `'array'` and `'object'` (note: configuration properties which have `'array'` type and fields property are arrays of objects),
-*   **prefixKey** (String, optional): value represents the prefix key for the configuration property keys (note: this property can only be used on a first level of object),
-* **name** (String, optional): overrides field name used to form a configuration key,
-* **watch** (Boolean, optional): to enable watch for this property set value to true (note: if property also has fields property, watch will be applied to all of its nested properties),
-* **fields** (ConfigurationObject, optional): if type of current field is 'object' or 'array', fields represent nested values of object.
+**fields** (struct pointer): struct that will be populated with configuration properties. Fields in the struct that will be populated must be exported (starting with an upper-case letter). By default, configuration key is equal to field name, but with first letter lower-cased. Fields can use custom key names by specifying `mapstructure` tag.
 
-***.initialize([options])***
+Fields can be assigned watches by adding a tag `config:"watch"`.
 
-Connects to additional configuration source and populates values. Function accepts `options` object with two properties:
-* **extension** (String, optional): name of additional configuration source, possible values are `'consul'` and `'etcd'`,
-* **configPath** (String, optional): path to your configuration source file, default values are `'config/config.yml'` or `'config/config.yaml'`.
+**options** (config.Options): can be used to set an additional configuration source (consul <s>or etcd</s>) or custom configuration file path.
 
+```go
+// import package
+import "github.com/mc0239/kumuluzee-go-config/config"
 
-```javascript
-const ConfigBundle = require('@kumuluz/kumuluzee-config');
-
-const restConfig = new ConfigBundle({
-    prefixKey: 'rest-config',
-    type: 'object',
-    fields: {
-        integerProperty: {
-            type: 'number',
-            name: 'foo'
-        },
-        booleanProperty: {
-            type: 'boolean'
-        },
-        stringProperty: {
-            type: 'string',
-            watch: true
+// define a struct
+type myConfig struct {
+    Kumuluz struct {
+        Name    string
+        Version string
+        Env     struct {
+            Name string
         }
-    }
-});
+    } `mapstructure:"kumuluzee"`
+    RestConfig struct {
+        String  string `mapstructure:"string-property" config:"watch"`
+        Boolean bool   `mapstructure:"boolean-property"`
+        Integer int    `mapstructure:"integer-property"`
+    } `mapstructure:"rest-config"`
+}
 
-exports.remoteConfig = restConfig;
+// make a struct instance & call config.NewBundle with a pointer to it
+var myconf myConfig
+config.NewBundle("", &myconf, config.Options{})
 ```
-</s>
 
 **config.Util**
 
 It is used for retrieving values of configuration parameters from the configuration framework.
 
-***.Initialize(config.Options{...})*** 
+***config.NewUtil(options)***
 
-Connects to additional configuration source. Functions accepts the same object as ConfigBundle's initialize function.
+**options** (config.Options): can be used to set an additional configuration source (consul <s>or etcd</s>) or custom configuration file path.
 
 ```go
 // import package
@@ -97,7 +89,6 @@ var confUtil config.Util
 confUtil = config.Initialize(config.Options{
     Extension: "consul",
 })
-
 ```
 
 ***.Get(key)***
@@ -126,7 +117,7 @@ Since configuration properties in <s>etcd and</s> Consul can be updated during m
 
 If watch is enabled on a field, its value will be dynamically updated on any change in configuration source, as long as new value is of a proper type. For example, if value in configuration store is set to `'string'` type and is changed to a non-string value, field value will not be updated.
 
-<s>While properties can be watched using ConfigBundle object by setting watch property to true, </s>we can use config.Util to subscribe for changes using `subscribe` function.
+While properties can be watched using config.Bundle object by tagging a field with `config:"watch"`, we can use config.Util to subscribe for changes using `subscribe` function.
 
 ```go
 confUtil.Subscribe(watchKey, func(key string, value string) {

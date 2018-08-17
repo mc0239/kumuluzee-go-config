@@ -2,21 +2,28 @@ package config
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
+	"unicode"
+	"unicode/utf8"
+
+	"github.com/mc0239/logm"
+	"github.com/mitchellh/mapstructure"
 )
 
 // Util is used for retrieving config values from available sources. Util can be initialized with
 // config.Initialize() function
 type Util struct {
 	configSources []configSource
-	Logger        logger
+	Logger        logm.Logm
 }
 
-/*type Bundle struct {
+type Bundle struct {
 	prefixKey string
 	fields    interface{}
 	conf      Util
-}*/
+	Logger    logm.Logm
+}
 
 // Options struct is used when instantiating a new Util, it allows configuring extension (currently
 // supported: "consul"), path to config file and log level of initialized Util
@@ -26,8 +33,6 @@ type Options struct {
 	LogLevel  int
 }
 
-var lgr *logger
-
 type configSource interface {
 	Name() string
 	ordinal() int
@@ -35,26 +40,25 @@ type configSource interface {
 	Subscribe(key string, callback func(key string, value string))
 }
 
-func Initialize(options Options) Util {
-
-	lgr = &logger{
+func NewUtil(options Options) Util {
+	lgr := logm.Logm{
 		LogLevel: options.LogLevel,
 	}
 
 	configs := make([]configSource, 0)
 
-	envConfigSource := initEnvConfigSource()
+	envConfigSource := initEnvConfigSource(&lgr)
 	if envConfigSource != nil {
 		configs = append(configs, envConfigSource)
 	}
 
-	fileConfigSource := initFileConfigSource(options.FilePath)
+	fileConfigSource := initFileConfigSource(options.FilePath, &lgr)
 	if fileConfigSource != nil {
 		configs = append(configs, fileConfigSource)
 	}
 
 	if options.Extension == "consul" {
-		extConfigSource := initConsulConfigSource(fileConfigSource)
+		extConfigSource := initConsulConfigSource(fileConfigSource, &lgr)
 		if extConfigSource != nil {
 			configs = append(configs, extConfigSource)
 		}
@@ -68,10 +72,66 @@ func Initialize(options Options) Util {
 
 	k := Util{
 		configs,
-		*lgr,
+		lgr,
 	}
 
 	return k
+}
+
+func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
+
+	lgr := logm.Logm{
+		LogLevel: options.LogLevel,
+	}
+
+	options.LogLevel = 5
+	util := NewUtil(options)
+
+	// convert fields struct to map
+	var fieldsMap map[string]interface{}
+	err := mapstructure.Decode(fields, &fieldsMap)
+	if err != nil {
+		panic(err)
+	}
+
+	// recursively traverse all fields and set their values using Util.Get()
+	if prefixKey != "" {
+		prefixKey += "."
+	}
+	setMapValues(fieldsMap, prefixKey, util)
+
+	// convert map back to struct
+	err = mapstructure.Decode(fieldsMap, &fields)
+	if err != nil {
+		panic(err)
+	}
+
+	// TODO: register watches on fields tagged with config:"watch"
+
+	return Bundle{
+		prefixKey: "",
+		fields:    fields,
+		conf:      util,
+		Logger:    lgr,
+	}
+}
+
+func setMapValues(m map[string]interface{}, keyPrefix string, util Util) {
+	for key := range m {
+		// if mapstructure tag is not defined, the key is the same as the name of the field.
+		// Since exposed struct fields are capitalized, we make the first letter lower-case
+		// (capitalized key can be explicitely assigned by using mapstruct tag on field)
+		r, n := utf8.DecodeRuneInString(key)
+		lkey := string(unicode.ToLower(r)) + key[n:]
+
+		valType := reflect.TypeOf(m[key])
+		if valType.Kind() == reflect.Map {
+			setMapValues(m[key].(map[string]interface{}), keyPrefix+lkey+".", util)
+		} else {
+			valFromConf := util.Get(keyPrefix + lkey)
+			m[key] = valFromConf
+		}
+	}
 }
 
 func (c Util) Subscribe(key string, callback func(key string, value string)) {
@@ -99,7 +159,7 @@ func (c Util) Get(key string) interface{} {
 	for _, cs := range c.configSources {
 		val = cs.Get(key)
 		if val != nil {
-			lgr.logV(fmt.Sprintf("Found value for key %s, source: %s", key, cs.Name()))
+			c.Logger.LogV(fmt.Sprintf("Found value for key %s, source: %s", key, cs.Name()))
 			break
 		}
 	}

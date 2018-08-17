@@ -7,34 +7,37 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
+	"github.com/mc0239/logm"
 )
 
 type fileConfigSource struct {
 	config map[string]interface{}
+	logger *logm.Logm
 }
 
-func initFileConfigSource(configPath string) configSource {
-	lgr.logV("Initializing FileConfigSource")
+func initFileConfigSource(configPath string, lgr *logm.Logm) configSource {
+	lgr.LogV("Initializing FileConfigSource")
 	var c fileConfigSource
+	c.logger = lgr
 
 	joinedPath := path.Join(configPath, "config.yaml")
 
-	lgr.logV(fmt.Sprintf("Config file path: %s\n", joinedPath))
+	lgr.LogV(fmt.Sprintf("Config file path: %s\n", joinedPath))
 
 	bytes, err := ioutil.ReadFile(joinedPath)
 	if err != nil {
-		lgr.logE(fmt.Sprintf("Failed to read file on path: %s, error: %s", joinedPath, err.Error()))
+		lgr.LogE(fmt.Sprintf("Failed to read file on path: %s, error: %s", joinedPath, err.Error()))
 		return nil
 	}
 	//fmt.Printf("Read: %s", bytes)
 
 	err = yaml.Unmarshal(bytes, &c.config)
 	if err != nil {
-		lgr.logE(fmt.Sprintf("Failed tu unmarshal yaml: %s", err.Error()))
+		lgr.LogE(fmt.Sprintf("Failed tu unmarshal yaml: %s", err.Error()))
 		return nil
 	}
 
-	lgr.logV("Initialized FileConfigSource")
+	lgr.LogV("Initialized FileConfigSource")
 	return c
 }
 
