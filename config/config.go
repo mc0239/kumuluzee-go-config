@@ -5,63 +5,83 @@ import (
 	"strconv"
 )
 
-// consul value -> local value -> nil
-
-// on init: read all values and store a map with everything
-//          make an option to make value watches (update
-//			values while app is running)
-
-// order of priority:
-// 1 - environment variables
-// 2 - configuration files
-// 3 - extension (consul, etcd ...)
-
-type ConfigUtil struct {
+// Util is used for retrieving config values from available sources. Util can be initialized with
+// config.Initialize() function
+type Util struct {
 	configSources []configSource
 	Logger        logger
+}
+
+/*type Bundle struct {
+	prefixKey string
+	fields    interface{}
+	conf      Util
+}*/
+
+// Options struct is used when instantiating a new Util, it allows configuring extension (currently
+// supported: "consul"), path to config file and log level of initialized Util
+type Options struct {
+	Extension string // supported options: consul
+	FilePath  string // path to config.yaml. If not specified, assumes current directory
+	LogLevel  int
 }
 
 var lgr *logger
 
 type configSource interface {
 	Name() string
+	ordinal() int
 	Get(key string) interface{}
-	Watch(key string, callback func(key string, value string))
+	Subscribe(key string, callback func(key string, value string))
 }
 
-func Initialize(ext string, configPath string, logLevel int) ConfigUtil {
+func Initialize(options Options) Util {
 
 	lgr = &logger{
-		LogLevel: logLevel,
+		LogLevel: options.LogLevel,
 	}
 
-	var envConfigSource, fileConfigSource, extConfigSource configSource
+	configs := make([]configSource, 0)
 
-	envConfigSource = initEnvConfigSource()
-	fileConfigSource = initFileConfigSource(configPath)
+	envConfigSource := initEnvConfigSource()
+	if envConfigSource != nil {
+		configs = append(configs, envConfigSource)
+	}
 
-	if ext == "consul" {
-		extConfigSource = initConsulConfigSource(fileConfigSource)
-	} else if ext == "etcd" {
+	fileConfigSource := initFileConfigSource(options.FilePath)
+	if fileConfigSource != nil {
+		configs = append(configs, fileConfigSource)
+	}
+
+	if options.Extension == "consul" {
+		extConfigSource := initConsulConfigSource(fileConfigSource)
+		if extConfigSource != nil {
+			configs = append(configs, extConfigSource)
+		}
+	} else if options.Extension == "etcd" {
 		// TODO:
 	} else {
 		// TODO: invalid ext
 	}
 
-	k := ConfigUtil{
-		[]configSource{envConfigSource, extConfigSource, fileConfigSource},
+	// TODO: sort sources by source.ordinal()
+
+	k := Util{
+		configs,
 		*lgr,
 	}
 
 	return k
 }
 
-func (c ConfigUtil) Watch(key string, callback func(key string, value string)) {
+func (c Util) Subscribe(key string, callback func(key string, value string)) {
 
-	// iterate through configSources and deploy watches
-	// note: env and file configSources don't actually have a watch
+	// find extension configSource and deploy a watch
 	for _, cs := range c.configSources {
-		cs.Watch(key, callback)
+		if cs.Name() == "consul" || cs.Name() == "etcd" {
+			cs.Subscribe(key, callback)
+			break
+		}
 	}
 
 }
@@ -72,14 +92,11 @@ importance from most to least important, and the value is returned from the firs
 was found in.
 Value is of type interface{} and might require type assertion
 */
-func (c ConfigUtil) Get(key string) interface{} {
+func (c Util) Get(key string) interface{} {
 	// iterate through configSources and try to get some value ...
 	var val interface{}
 
 	for _, cs := range c.configSources {
-		if cs == nil { // TODO: temporary
-			continue
-		}
 		val = cs.Get(key)
 		if val != nil {
 			lgr.logV(fmt.Sprintf("Found value for key %s, source: %s", key, cs.Name()))
@@ -93,7 +110,7 @@ func (c ConfigUtil) Get(key string) interface{} {
 GetString calls Config.Get() function to retrieve the value and tries to type assert or type
 cast the value to type string.
 */
-func (c ConfigUtil) GetString(key string) (value string, ok bool) {
+func (c Util) GetString(key string) (value string, ok bool) {
 	// try to type assert as string
 	svalue, ok := c.Get(key).(string)
 	if ok {
@@ -112,7 +129,7 @@ func (c ConfigUtil) GetString(key string) (value string, ok bool) {
 GetInt calls Config.Get() function to retrieve the value and tries to type assert or type
 cast the value to type int.
 */
-func (c ConfigUtil) GetInt(key string) (value int, ok bool) {
+func (c Util) GetInt(key string) (value int, ok bool) {
 	// if value is type asserted as byte array, cast to string and convert to int
 	svalue, ok := c.Get(key).([]byte)
 	if ok {

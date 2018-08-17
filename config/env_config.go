@@ -12,6 +12,10 @@ func initEnvConfigSource() configSource {
 	return c
 }
 
+func (c envConfigSource) ordinal() int {
+	return 300
+}
+
 func (c envConfigSource) Get(key string) interface{} {
 	value, exists := os.LookupEnv(key)
 	if exists {
@@ -20,7 +24,7 @@ func (c envConfigSource) Get(key string) interface{} {
 	return nil
 }
 
-func (c envConfigSource) Watch(key string, callback func(key string, value string)) {
+func (c envConfigSource) Subscribe(key string, callback func(key string, value string)) {
 	return
 }
 

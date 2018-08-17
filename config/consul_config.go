@@ -47,6 +47,10 @@ func initConsulConfigSource(localConfig configSource) configSource {
 	return consulConfig
 }
 
+func (c consulConfigSource) ordinal() int {
+	return 150
+}
+
 func (c consulConfigSource) Get(key string) interface{} {
 	//fmt.Println("[consulConfigSource] Get: " + key)
 	kv := c.client.KV()
@@ -67,7 +71,7 @@ func (c consulConfigSource) Get(key string) interface{} {
 	return pair.Value
 }
 
-func (c consulConfigSource) Watch(key string, callback func(key string, value string)) {
+func (c consulConfigSource) Subscribe(key string, callback func(key string, value string)) {
 	lgr.logI(fmt.Sprintf("Creating a watch for key %s, source: %s", key, c.Name()))
 	go c.watch(key, "", callback, 0)
 }
@@ -112,5 +116,5 @@ func (c consulConfigSource) watch(key string, previousValue string, callback fun
 }
 
 func (c consulConfigSource) Name() string {
-	return "Consul"
+	return "consul"
 }

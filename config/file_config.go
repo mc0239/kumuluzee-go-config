@@ -38,6 +38,10 @@ func initFileConfigSource(configPath string) configSource {
 	return c
 }
 
+func (c fileConfigSource) ordinal() int {
+	return 100
+}
+
 func (c fileConfigSource) Get(key string) interface{} {
 	//fmt.Println("[fileConfigSource] Get: " + key)
 	tree := strings.Split(key, ".")
@@ -60,7 +64,7 @@ func (c fileConfigSource) Get(key string) interface{} {
 	return val[tree[len(tree)-1]]
 }
 
-func (c fileConfigSource) Watch(key string, callback func(key string, value string)) {
+func (c fileConfigSource) Subscribe(key string, callback func(key string, value string)) {
 	return
 }
 
