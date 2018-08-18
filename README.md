@@ -34,7 +34,7 @@ Each configuration source has its own priority, meaning values from configuratio
 
 ## Usage
 
-Properties can be <s>held in a struct using `config.Bundle` or</s> retrieved by using `config.Util` methods.
+Properties can be held in a struct using `config.Bundle` or retrieved by using `config.Util` methods.
 
 **config.NewBundle(prefixKey, fields, options)**
 

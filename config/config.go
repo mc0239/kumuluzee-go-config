@@ -11,13 +11,15 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-// Util is used for retrieving config values from available sources. Util can be initialized with
-// config.Initialize() function
+// Util is used for retrieving config values from available sources.
+// Util should be initialized with config.NewUtil() function
 type Util struct {
 	configSources []configSource
 	Logger        logm.Logm
 }
 
+// Bundle is used for filling a user-defined struct with config values.
+// Bundle should be initialized with config.NewBundle() function
 type Bundle struct {
 	prefixKey string
 	fields    interface{}
@@ -25,12 +27,17 @@ type Bundle struct {
 	Logger    logm.Logm
 }
 
-// Options struct is used when instantiating a new Util, it allows configuring extension (currently
-// supported: "consul"), path to config file and log level of initialized Util
+// Options struct is used when instantiating a new Util or Bundle.
 type Options struct {
-	Extension string // supported options: consul
-	FilePath  string // path to config.yaml. If not specified, assumes current directory
-	LogLevel  int
+	// Additional configuration source to connect to. Possible values are: "consul"
+	Extension string
+	// FilePath is a path to configuration file, including the configuration file name.
+	// Passing an empty string will default to config/config.yaml
+	FilePath string
+	// LogLevel can be used to limit the amount of logging output. Default log level is 0. Level 4
+	// will only output Warnings and Errors, and level 5 will only output errors.
+	// See package github.com/mc0239/logm for more details on logging and log levels.
+	LogLevel int
 }
 
 type configSource interface {
@@ -40,6 +47,7 @@ type configSource interface {
 	Subscribe(key string, callback func(key string, value string))
 }
 
+// NewUtil instantiates a new Util with given options
 func NewUtil(options Options) Util {
 	lgr := logm.New("Kumuluz-config")
 	lgr.LogLevel = options.LogLevel
@@ -77,6 +85,10 @@ func NewUtil(options Options) Util {
 	return k
 }
 
+// NewBundle instantiates a new Bundle with given options.
+// Fields must be a pointer to a struct that will be filled with configuration values.
+// Note that you don't have to preserve the returned Bundle struct, as the configuration is written
+// back to the passed fields struct.
 func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 	lgr := logm.New("Kumuluz-config")
 	lgr.LogLevel = options.LogLevel
@@ -113,6 +125,7 @@ func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 	}
 }
 
+// recursively traverse the generated map and assign configuration values using Util
 func setMapValues(m map[string]interface{}, keyPrefix string, util Util) {
 	for key := range m {
 		// if mapstructure tag is not defined, the key is the same as the name of the field.
@@ -131,6 +144,10 @@ func setMapValues(m map[string]interface{}, keyPrefix string, util Util) {
 	}
 }
 
+// Subscribe creates a watch on a given configuration key.
+// Note that watch will be enabled on an extension configuration source, if one has been defined
+// when Util was created.
+// When value in configuration updated, callback is fired with the key and the new value.
 func (c Util) Subscribe(key string, callback func(key string, value string)) {
 
 	// find extension configSource and deploy a watch
@@ -143,12 +160,9 @@ func (c Util) Subscribe(key string, callback func(key string, value string)) {
 
 }
 
-/*
-Get returns value for a given key, stored in configSource. ConfigSources are iterated by their
-importance from most to least important, and the value is returned from the first configSource it
-was found in.
-Value is of type interface{} and might require type assertion
-*/
+// Get returns the value for a given key, stored in configuration.
+// Configuration sources are checked by their ordinal numbers, and value is returned from first
+// configuration source it was found in.
 func (c Util) Get(key string) interface{} {
 	// iterate through configSources and try to get some value ...
 	var val interface{}
@@ -163,10 +177,10 @@ func (c Util) Get(key string) interface{} {
 	return val
 }
 
-/*
-GetString calls Config.Get() function to retrieve the value and tries to type assert or type
-cast the value to type string.
-*/
+// GetString is a helper method that calls Util.Get() internally and type asserts the value to
+// string before returning it.
+// If value is not found in any configuration source or the value could not be type asserted to
+// string, an empty string is returned with ok equal to false.
 func (c Util) GetString(key string) (value string, ok bool) {
 	// try to type assert as string
 	svalue, ok := c.Get(key).(string)
@@ -182,10 +196,10 @@ func (c Util) GetString(key string) (value string, ok bool) {
 	return "", false
 }
 
-/*
-GetInt calls Config.Get() function to retrieve the value and tries to type assert or type
-cast the value to type int.
-*/
+// GetInt is a helper method that calls Util.Get() internally and type asserts the value to
+// int before returning it.
+// If value is not found in any configuration source or the value could not be type asserted to
+// int, a zero is returned with ok equal to false.
 func (c Util) GetInt(key string) (value int, ok bool) {
 	// if value is type asserted as byte array, cast to string and convert to int
 	svalue, ok := c.Get(key).([]byte)
