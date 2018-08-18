@@ -156,7 +156,7 @@ func (c Util) Get(key string) interface{} {
 	for _, cs := range c.configSources {
 		val = cs.Get(key)
 		if val != nil {
-			c.Logger.LogV(fmt.Sprintf("Found value for key %s, source: %s", key, cs.Name()))
+			c.Logger.Verbose(fmt.Sprintf("Found value for key %s, source: %s", key, cs.Name()))
 			break
 		}
 	}

@@ -10,9 +10,9 @@ type envConfigSource struct {
 }
 
 func initEnvConfigSource(lgr *logm.Logm) configSource {
-	lgr.LogV("Initializing EnvConfigSource")
+	lgr.Verbose("Initializing EnvConfigSource")
 	var c envConfigSource
-	lgr.LogV("Initialized EnvConfigSource")
+	lgr.Verbose("Initialized EnvConfigSource")
 	return c
 }
 

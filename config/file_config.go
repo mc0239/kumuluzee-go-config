@@ -16,28 +16,28 @@ type fileConfigSource struct {
 }
 
 func initFileConfigSource(configPath string, lgr *logm.Logm) configSource {
-	lgr.LogV("Initializing FileConfigSource")
+	lgr.Verbose("Initializing FileConfigSource")
 	var c fileConfigSource
 	c.logger = lgr
 
 	joinedPath := path.Join(configPath, "config.yaml")
 
-	lgr.LogV(fmt.Sprintf("Config file path: %s\n", joinedPath))
+	lgr.Verbose(fmt.Sprintf("Config file path: %s\n", joinedPath))
 
 	bytes, err := ioutil.ReadFile(joinedPath)
 	if err != nil {
-		lgr.LogE(fmt.Sprintf("Failed to read file on path: %s, error: %s", joinedPath, err.Error()))
+		lgr.Error(fmt.Sprintf("Failed to read file on path: %s, error: %s", joinedPath, err.Error()))
 		return nil
 	}
 	//fmt.Printf("Read: %s", bytes)
 
 	err = yaml.Unmarshal(bytes, &c.config)
 	if err != nil {
-		lgr.LogE(fmt.Sprintf("Failed tu unmarshal yaml: %s", err.Error()))
+		lgr.Error(fmt.Sprintf("Failed tu unmarshal yaml: %s", err.Error()))
 		return nil
 	}
 
-	lgr.LogV("Initialized FileConfigSource")
+	lgr.Verbose("Initialized FileConfigSource")
 	return c
 }
 
