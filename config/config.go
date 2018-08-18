@@ -177,23 +177,28 @@ func (c Util) Get(key string) interface{} {
 	return val
 }
 
-// GetString is a helper method that calls Util.Get() internally and type asserts the value to
-// string before returning it.
+// GetBool is a helper method that calls Util.Get() internally and type asserts the value to
+// bool before returning it.
 // If value is not found in any configuration source or the value could not be type asserted to
-// string, an empty string is returned with ok equal to false.
-func (c Util) GetString(key string) (value string, ok bool) {
-	// try to type assert as string
-	svalue, ok := c.Get(key).(string)
+// bool, a false is returned with ok equal to false.
+func (c Util) GetBool(key string) (value bool, ok bool) {
+	// if value is type asserted as byte array, cast to string and convert to int
+	svalue, ok := c.Get(key).([]byte)
 	if ok {
-		return svalue, true
+		ivalue, err := strconv.ParseBool(string(svalue))
+		if err == nil {
+			return ivalue, true
+		}
 	}
-	// try to type assert as byte array and cast to string
-	bvalue, ok := c.Get(key).([]byte)
+
+	// if value is type asserted as int, return it
+	ivalue, ok := c.Get(key).(bool)
 	if ok {
-		return string(bvalue), true
+		return ivalue, true
 	}
-	// can't assert to string, return nil
-	return "", false
+
+	// can't assert to int, return 0
+	return false, false
 }
 
 // GetInt is a helper method that calls Util.Get() internally and type asserts the value to
@@ -218,4 +223,47 @@ func (c Util) GetInt(key string) (value int, ok bool) {
 
 	// can't assert to int, return 0
 	return 0, false
+}
+
+// GetFloat is a helper method that calls Util.Get() internally and type asserts the value to
+// float64 before returning it.
+// If value is not found in any configuration source or the value could not be type asserted to
+// int, a zero is returned with ok equal to false.
+func (c Util) GetFloat(key string) (value float64, ok bool) {
+	// if value is type asserted as byte array, cast to string and convert to int
+	svalue, ok := c.Get(key).([]byte)
+	if ok {
+		ivalue, err := strconv.ParseFloat(string(svalue), 64)
+		if err == nil {
+			return ivalue, true
+		}
+	}
+
+	// if value is type asserted as int, return it
+	ivalue, ok := c.Get(key).(float64)
+	if ok {
+		return ivalue, true
+	}
+
+	// can't assert to int, return 0
+	return 0, false
+}
+
+// GetString is a helper method that calls Util.Get() internally and type asserts the value to
+// string before returning it.
+// If value is not found in any configuration source or the value could not be type asserted to
+// string, an empty string is returned with ok equal to false.
+func (c Util) GetString(key string) (value string, ok bool) {
+	// try to type assert as string
+	svalue, ok := c.Get(key).(string)
+	if ok {
+		return svalue, true
+	}
+	// try to type assert as byte array and cast to string
+	bvalue, ok := c.Get(key).([]byte)
+	if ok {
+		return string(bvalue), true
+	}
+	// can't assert to string, return nil
+	return "", false
 }
