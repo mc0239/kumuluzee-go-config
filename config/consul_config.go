@@ -12,9 +12,11 @@ import (
 )
 
 type consulConfigSource struct {
-	client *api.Client
-	path   string
-	logger *logm.Logm
+	client          *api.Client
+	startRetryDelay int64
+	maxRetryDelay   int64
+	path            string
+	logger          *logm.Logm
 }
 
 func initConsulConfigSource(localConfig configSource, lgr *logm.Logm) configSource {
@@ -42,6 +44,20 @@ func initConsulConfigSource(localConfig configSource, lgr *logm.Logm) configSour
 	envName := localConfig.Get("kumuluzee.env.name")
 	name := localConfig.Get("kumuluzee.name")
 	version := localConfig.Get("kumuluzee.version")
+
+	startRetryDelay, ok := localConfig.Get("kumuluzee.config.start-retry-delay-ms").(float64)
+	if !ok {
+		lgr.Error("Failed to assert value kumuluzee.config.start-retry-delay-ms as float64. Using default value 500.")
+		consulConfig.startRetryDelay = 500
+	}
+	consulConfig.startRetryDelay = int64(startRetryDelay)
+
+	maxRetryDelay, ok := localConfig.Get("kumuluzee.config.max-retry-delay-ms").(float64)
+	if !ok {
+		lgr.Error("Failed to assert value kumuluzee.config.max-retry-delay-ms as float64. Using default value 900000.")
+		consulConfig.maxRetryDelay = 900000
+	}
+	consulConfig.maxRetryDelay = int64(maxRetryDelay)
 
 	consulConfig.path = fmt.Sprintf("environments/%s/services/%s/%s/config", envName, name, version)
 
@@ -77,36 +93,45 @@ func (c consulConfigSource) Get(key string) interface{} {
 
 func (c consulConfigSource) Subscribe(key string, callback func(key string, value string)) {
 	c.logger.Info(fmt.Sprintf("Creating a watch for key %s, source: %s", key, c.Name()))
-	go c.watch(key, "", callback, 0)
+	go c.watch(key, "", c.startRetryDelay, callback, 0)
 }
 
-func (c consulConfigSource) watch(key string, previousValue string, callback func(key string, value string), waitIndex uint64) {
+func (c consulConfigSource) watch(key string, previousValue string, retryDelay int64, callback func(key string, value string), waitIndex uint64) {
 
 	// TODO: have a parameter for watch duration, (likely reads from config.yaml?)
-	t, err := time.ParseDuration("10m")
-	if err != nil {
-		c.logger.Warning(fmt.Sprintf("Failed to parse duration for WaitTime: %s, using default value: %s", err.Error(), t))
-		return
-	}
-
+	t := 10 * time.Minute
 	c.logger.Verbose(fmt.Sprintf("Set a watch on key %s with %s wait time", key, t))
 
 	q := api.QueryOptions{
 		WaitIndex: waitIndex,
-		WaitTime:  t,
+		WaitTime:  10 * time.Minute,
 	}
 
 	key = strings.Replace(key, ".", "/", -1)
 	pair, meta, err := c.client.KV().Get(path.Join(c.path, key), &q)
 
-	//fmt.Printf("Key: %s\nPair:\n%v err?: %v\n", key, pair, err)
-	c.logger.Verbose(fmt.Sprintf("Watch on key %s hit %s wait time", key, t))
+	if err != nil {
+		c.logger.Warning(fmt.Sprintf("Watch on %s failed with error: %s, retry delay: %d ms", key, err.Error(), retryDelay))
+
+		// sleep for current delay
+		time.Sleep(time.Duration(retryDelay) * time.Millisecond)
+
+		// exponentially extend retry delay, but keep it at most maxRetryDelay
+		newRetryDelay := retryDelay * 2
+		if newRetryDelay > c.maxRetryDelay {
+			newRetryDelay = c.maxRetryDelay
+		}
+		c.watch(key, "", newRetryDelay, callback, 0)
+		return
+	}
+
+	c.logger.Verbose(fmt.Sprintf("Wait time (%s) on watch for key %s reached.", key, t))
 
 	if pair != nil {
 		if string(pair.Value) != previousValue {
 			callback(key, string(pair.Value))
 		}
-		c.watch(key, string(pair.Value), callback, meta.LastIndex)
+		c.watch(key, string(pair.Value), c.startRetryDelay, callback, meta.LastIndex)
 	} else {
 		if previousValue != "" {
 			callback(key, "")
@@ -115,7 +140,7 @@ func (c consulConfigSource) watch(key string, previousValue string, callback fun
 		if meta != nil {
 			lastIndex = meta.LastIndex
 		}
-		c.watch(key, "", callback, lastIndex)
+		c.watch(key, "", c.startRetryDelay, callback, lastIndex)
 	}
 }
 
