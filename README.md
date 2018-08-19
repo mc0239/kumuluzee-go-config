@@ -23,6 +23,7 @@ $ dep ensure -add github.com/mc0239/kumuluzee-go-config
 ```
 
 ## Setup
+
 In order to connect to Consul and etcd, you must properly set configuration files. For more information check sections **Configuring Consul** and **Configuring etcd**  in [KumuluzEE Config's section Usage](https://github.com/kumuluz/kumuluzee-config#usage).
 
 Properties in Consul and etcd are stored in a specific matter. For more information check sections  **Configuration properties inside Consul** and **Configuration properties inside etcd** in [KumuluzEE Config's section Usage](https://github.com/kumuluz/kumuluzee-config#usage).
@@ -36,7 +37,9 @@ Each configuration source has its own priority, meaning values from configuratio
 
 Properties can be held in a struct using `config.Bundle` or retrieved by using `config.Util` methods.
 
-**config.NewBundle(prefixKey, fields, options)**
+### config.Bundle
+
+*config.NewBundle(prefixKey, fields, options)*
 
 **prefixKey** (string): value represents the prefix key for the configuration property keys use "" (empty string) for no prefix.
 
@@ -71,11 +74,11 @@ var myconf myConfig
 config.NewBundle("", &myconf, config.Options{})
 ```
 
-**config.Util**
+### config.Util
 
 It is used for retrieving values of configuration parameters from the configuration framework.
 
-***config.NewUtil(options)***
+*config.NewUtil(options)*
 
 **options** (config.Options): can be used to set an additional configuration source (consul <s>or etcd</s>) or custom configuration file path.
 
@@ -111,7 +114,7 @@ value, ok := confUtil.GetString(key) // string
 
 Variable `ok` will evaluate to `true` if key exists and value is successfully type asserted.
 
-**Watches**
+### Watches
 
 Since configuration properties in <s>etcd and</s> Consul can be updated during microservice runtime, they have to be dynamically updated inside the running microservices. This behaviour can be enabled with watches.
 
@@ -125,21 +128,19 @@ confUtil.Subscribe(watchKey, func(key string, value string) {
 })
 ```
 
-**Retry delays**
+#### Retry delays
 
 <s>Etcd and</s> Consul implementations support retry delays on watch connection errors. Since they use increasing exponential delay, two parameters need to be specified:
 
 * `kumuluzee.config.start-retry-delay-ms`, which sets the retry delay duration in ms on first error - default: 500
 * `kumuluzee.config.max-retry-delay-ms`, which sets the maximum delay duration in ms on consecutive errors - default: 900000 (15 min)
 
-<s>
-
 ## Changelog
 
 Recent changes can be viewed on Github on the [Releases Page](https://github.com/kumuluz/kumuluzee/releases)
 
 ## Contribute
-
+<s>
 See the [contributing docs](https://github.com/kumuluz/kumuluzee-nodejs-config/blob/master/CONTRIBUTING.md)
 
 When submitting an issue, please follow the [guidelines](https://github.com/kumuluz/kumuluzee-nodejs-config/blob/master/CONTRIBUTING.md#bugs).
