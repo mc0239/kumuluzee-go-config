@@ -89,7 +89,7 @@ import "github.com/mc0239/kumuluzee-go-config/config"
 // usage
 var confUtil config.Util
 
-confUtil = config.Initialize(config.Options{
+confUtil = config.NewUtil(config.Options{
     Extension: "consul",
 })
 ```
