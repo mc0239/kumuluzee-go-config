@@ -16,12 +16,6 @@ You can `go get` this package:
 $ go get github.com/mc0239/kumuluzee-go-config
 ```
 
-Or you can get it via a package manager, for example `dep`:
-
-```
-$ dep ensure -add github.com/mc0239/kumuluzee-go-config
-```
-
 ## Setup
 
 In order to connect to Consul and etcd, you must properly set configuration files. For more information check sections **Configuring Consul** and **Configuring etcd**  in [KumuluzEE Config's section Usage](https://github.com/kumuluz/kumuluzee-config#usage).
