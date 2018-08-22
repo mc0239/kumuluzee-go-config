@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
-	"path"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -20,7 +19,13 @@ func initFileConfigSource(configPath string, lgr *logm.Logm) configSource {
 	var c fileConfigSource
 	c.logger = lgr
 
-	joinedPath := path.Join(configPath, "config.yaml")
+	var joinedPath string
+	if configPath == "" {
+		// set default
+		joinedPath = "config/config.yaml"
+	} else {
+		joinedPath = configPath
+	}
 
 	lgr.Verbose(fmt.Sprintf("Config file path: %s\n", joinedPath))
 

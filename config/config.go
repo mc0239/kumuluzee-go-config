@@ -62,6 +62,8 @@ func NewUtil(options Options) Util {
 	fileConfigSource := initFileConfigSource(options.FilePath, &lgr)
 	if fileConfigSource != nil {
 		configs = append(configs, fileConfigSource)
+	} else {
+		lgr.Error("File configuration source failed to load!")
 	}
 
 	if options.Extension == "consul" {
@@ -206,46 +208,66 @@ func (c Util) GetBool(key string) (value bool, ok bool) {
 // If value is not found in any configuration source or the value could not be type asserted to
 // int, a zero is returned with ok equal to false.
 func (c Util) GetInt(key string) (value int, ok bool) {
-	// if value is type asserted as byte array, cast to string and convert to int
-	svalue, ok := c.Get(key).([]byte)
+	rvalue := c.Get(key)
+
+	// try to assert as any number type
+	nvalue, ok := toNumber(rvalue)
 	if ok {
-		ivalue, err := strconv.Atoi(string(svalue))
+		return int(nvalue), true
+	}
+
+	// try to assert as string and convert to int
+	svalue, ok := rvalue.(string)
+	if ok {
+		ivalue64, err := strconv.ParseInt(svalue, 0, 64)
 		if err == nil {
-			return ivalue, true
+			return int(ivalue64), true
 		}
 	}
 
-	// if value is type asserted as int, return it
-	ivalue, ok := c.Get(key).(int)
+	// try to assert as byte array and convert to int
+	bvalue, ok := rvalue.([]byte)
 	if ok {
-		return ivalue, true
+		ivalue64, err := strconv.ParseInt(string(bvalue), 0, 64)
+		if err == nil {
+			return int(ivalue64), true
+		}
 	}
 
-	// can't assert to int, return 0
 	return 0, false
 }
 
 // GetFloat is a helper method that calls Util.Get() internally and type asserts the value to
 // float64 before returning it.
 // If value is not found in any configuration source or the value could not be type asserted to
-// int, a zero is returned with ok equal to false.
+// float64, a zero is returned with ok equal to false.
 func (c Util) GetFloat(key string) (value float64, ok bool) {
-	// if value is type asserted as byte array, cast to string and convert to int
-	svalue, ok := c.Get(key).([]byte)
+	rvalue := c.Get(key)
+
+	// try to assert as any number type
+	nvalue, ok := toNumber(rvalue)
 	if ok {
-		ivalue, err := strconv.ParseFloat(string(svalue), 64)
+		return nvalue, true
+	}
+
+	// try to assert as string and convert to float64
+	svalue, ok := rvalue.(string)
+	if ok {
+		fvalue64, err := strconv.ParseFloat(svalue, 64)
 		if err == nil {
-			return ivalue, true
+			return fvalue64, true
 		}
 	}
 
-	// if value is type asserted as int, return it
-	ivalue, ok := c.Get(key).(float64)
+	// try to assert as byte array and convert to int
+	bvalue, ok := rvalue.([]byte)
 	if ok {
-		return ivalue, true
+		fvalue64, err := strconv.ParseFloat(string(bvalue), 64)
+		if err == nil {
+			return fvalue64, true
+		}
 	}
 
-	// can't assert to int, return 0
 	return 0, false
 }
 
@@ -266,4 +288,36 @@ func (c Util) GetString(key string) (value string, ok bool) {
 	}
 	// can't assert to string, return nil
 	return "", false
+}
+
+func toNumber(val interface{}) (num float64, ok bool) {
+	switch t := val.(type) {
+	case int:
+		return float64(t), true
+	case int8:
+		return float64(t), true
+	case int16:
+		return float64(t), true
+	case int32:
+		return float64(t), true
+	case int64:
+		return float64(t), true
+	case uint:
+		return float64(t), true
+	case uint8:
+		return float64(t), true
+	case uint16:
+		return float64(t), true
+	case uint32:
+		return float64(t), true
+	case uint64:
+		return float64(t), true
+
+	case float32:
+		return float64(t), true
+	case float64:
+		return float64(t), true
+	default:
+		return 0, false
+	}
 }
