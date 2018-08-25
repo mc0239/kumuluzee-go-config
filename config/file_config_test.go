@@ -117,11 +117,11 @@ func TestFileConfigBundle(t *testing.T) {
 	type someConfig struct {
 		Protocol string
 		Address  struct {
-			IP   string `mapstructure:"ip"`
+			IP   string `config:"ip"`
 			Port int
 		}
-		Version  string
-		SomeBool bool `mapstructure:"some-boolean"`
+		Version  string `config:",watch"`
+		SomeBool bool   `config:"some-boolean,watch"`
 	}
 
 	sc := someConfig{}

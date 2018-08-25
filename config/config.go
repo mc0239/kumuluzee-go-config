@@ -65,18 +65,30 @@ func NewUtil(options Options) Util {
 		lgr.Error("File configuration source failed to load!")
 	}
 
-	if options.Extension == "consul" {
+	switch options.Extension {
+	case "consul":
 		extConfigSource := initConsulConfigSource(fileConfigSource, &lgr)
 		if extConfigSource != nil {
 			configs = append(configs, extConfigSource)
 		}
-	} else if options.Extension == "etcd" {
-		// TODO:
-	} else {
-		// TODO: invalid ext
+		break
+	case "etcd":
+		// TODO: implement etcd extension
+		break
+	default:
+		lgr.Error("Invalid extension specified, extension configuration source will not be available")
+		break
 	}
 
-	// TODO: sort sources by source.ordinal()
+	// insertion sort
+	for i := 1; i < len(configs); i++ {
+		for k := i; k > 0 && configs[k].ordinal() > configs[k-1].ordinal(); k-- {
+			// swap
+			temp := configs[k]
+			configs[k] = configs[k-1]
+			configs[k-1] = temp
+		}
+	}
 
 	k := Util{
 		configs,
@@ -96,49 +108,71 @@ func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 
 	util := NewUtil(options)
 
+	bun := Bundle{
+		prefixKey: prefixKey,
+		fields:    &fields,
+		conf:      util,
+		Logger:    lgr,
+	}
+
 	// convert fields struct to map
 	var fieldsMap map[string]interface{}
-	err := mapstructure.Decode(fields, &fieldsMap)
+
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result:  &fieldsMap,
+		TagName: "config",
+	})
 	if err != nil {
-		panic(err)
+		lgr.Error("Failed to make a new decoder: %s", err.Error())
+		return bun
+	}
+
+	err = decoder.Decode(fields)
+	if err != nil {
+		lgr.Error("Failed to decode fields: %s", err.Error())
+		return bun
 	}
 
 	// recursively traverse all fields and set their values using Util.Get()
 	if prefixKey != "" {
 		prefixKey += "."
 	}
-	setMapValues(fieldsMap, prefixKey, util)
+	traverseFillBundle(fieldsMap, prefixKey, util)
 
 	// convert map back to struct
-	err = mapstructure.Decode(fieldsMap, &fields)
+	recoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		Result:  &fields,
+		TagName: "config",
+	})
 	if err != nil {
-		panic(err)
+		lgr.Error("Failed to make a new decoder: %s", err.Error())
+		return bun
+	}
+
+	err = recoder.Decode(fieldsMap)
+	if err != nil {
+		lgr.Error("Failed to recode fieldsMap: %s", err.Error())
+		return bun
 	}
 
 	// TODO: register watches on fields tagged with config:"watch"
 
-	return Bundle{
-		prefixKey: "",
-		fields:    fields,
-		conf:      util,
-		Logger:    lgr,
-	}
+	return bun
 }
 
 // recursively traverse the generated map and assign configuration values using Util
-func setMapValues(m map[string]interface{}, keyPrefix string, util Util) {
+func traverseFillBundle(m map[string]interface{}, keyPrefix string, util Util) {
 	for key := range m {
-		// if mapstructure tag is not defined, the key is the same as the name of the field.
+		// if config tag is not defined, the key is the same as the name of the field.
 		// Since exposed struct fields are capitalized, we make the first letter lower-case
-		// (capitalized key can be explicitely assigned by using mapstructure tag on field)
+		// (capitalized key can be explicitely assigned by using config tag on field)
 		r, n := utf8.DecodeRuneInString(key)
 		lkey := string(unicode.ToLower(r)) + key[n:]
 
 		valType := reflect.TypeOf(m[key])
 		if valType.Kind() == reflect.Map {
-			setMapValues(m[key].(map[string]interface{}), keyPrefix+lkey+".", util)
+			traverseFillBundle(m[key].(map[string]interface{}), keyPrefix+lkey+".", util)
 		} else {
-			//valFromConf := util.Get(keyPrefix + lkey)
 			switch t := m[key].(type) {
 			case bool:
 				m[key], _ = util.GetBool(keyPrefix + lkey)
@@ -156,7 +190,6 @@ func setMapValues(m map[string]interface{}, keyPrefix string, util Util) {
 				util.Logger.Warning("Unexpected type when bundling: %T", t)
 				break
 			}
-			//m[key] = valFromConf
 		}
 	}
 }
@@ -213,7 +246,6 @@ func (c Util) GetBool(key string) (value bool, ok bool) {
 		}
 	}
 
-	// can't assert to int, return 0
 	return false, false
 }
 
