@@ -88,7 +88,8 @@ func (c consulConfigSource) Get(key string) interface{} {
 	if pair == nil {
 		return nil
 	}
-	return pair.Value
+	// pair.Value is type []byte
+	return string(pair.Value)
 }
 
 func (c consulConfigSource) Subscribe(key string, callback func(key string, value string)) {

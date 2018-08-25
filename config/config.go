@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 	"unicode"
@@ -95,7 +94,6 @@ func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 	lgr := logm.New("Kumuluz-config")
 	lgr.LogLevel = options.LogLevel
 
-	options.LogLevel = 5
 	util := NewUtil(options)
 
 	// convert fields struct to map
@@ -132,7 +130,7 @@ func setMapValues(m map[string]interface{}, keyPrefix string, util Util) {
 	for key := range m {
 		// if mapstructure tag is not defined, the key is the same as the name of the field.
 		// Since exposed struct fields are capitalized, we make the first letter lower-case
-		// (capitalized key can be explicitely assigned by using mapstruct tag on field)
+		// (capitalized key can be explicitely assigned by using mapstructure tag on field)
 		r, n := utf8.DecodeRuneInString(key)
 		lkey := string(unicode.ToLower(r)) + key[n:]
 
@@ -140,8 +138,25 @@ func setMapValues(m map[string]interface{}, keyPrefix string, util Util) {
 		if valType.Kind() == reflect.Map {
 			setMapValues(m[key].(map[string]interface{}), keyPrefix+lkey+".", util)
 		} else {
-			valFromConf := util.Get(keyPrefix + lkey)
-			m[key] = valFromConf
+			//valFromConf := util.Get(keyPrefix + lkey)
+			switch t := m[key].(type) {
+			case bool:
+				m[key], _ = util.GetBool(keyPrefix + lkey)
+				break
+			case float32, float64:
+				m[key], _ = util.GetFloat(keyPrefix + lkey)
+				break
+			case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+				m[key], _ = util.GetInt(keyPrefix + lkey)
+				break
+			case string:
+				m[key], _ = util.GetString(keyPrefix + lkey)
+				break
+			default:
+				util.Logger.Warning("Unexpected type when bundling: %T", t)
+				break
+			}
+			//m[key] = valFromConf
 		}
 	}
 }
@@ -172,7 +187,6 @@ func (c Util) Get(key string) interface{} {
 	for _, cs := range c.configSources {
 		val = cs.Get(key)
 		if val != nil {
-			c.Logger.Verbose(fmt.Sprintf("Found value for key %s, source: %s", key, cs.Name()))
 			break
 		}
 	}
@@ -184,19 +198,19 @@ func (c Util) Get(key string) interface{} {
 // If value is not found in any configuration source or the value could not be type asserted to
 // bool, a false is returned with ok equal to false.
 func (c Util) GetBool(key string) (value bool, ok bool) {
-	// if value is type asserted as byte array, cast to string and convert to int
-	svalue, ok := c.Get(key).([]byte)
+	rvalue := c.Get(key)
+
+	bvalue, ok := c.Get(key).(bool)
 	if ok {
-		ivalue, err := strconv.ParseBool(string(svalue))
-		if err == nil {
-			return ivalue, true
-		}
+		return bvalue, true
 	}
 
-	// if value is type asserted as int, return it
-	ivalue, ok := c.Get(key).(bool)
+	svalue, ok := rvalue.(string)
 	if ok {
-		return ivalue, true
+		bvalue, err := strconv.ParseBool(string(svalue))
+		if err == nil {
+			return bvalue, true
+		}
 	}
 
 	// can't assert to int, return 0
@@ -211,7 +225,7 @@ func (c Util) GetInt(key string) (value int, ok bool) {
 	rvalue := c.Get(key)
 
 	// try to assert as any number type
-	nvalue, ok := toNumber(rvalue)
+	nvalue, ok := assertAsNumber(rvalue)
 	if ok {
 		return int(nvalue), true
 	}
@@ -223,14 +237,9 @@ func (c Util) GetInt(key string) (value int, ok bool) {
 		if err == nil {
 			return int(ivalue64), true
 		}
-	}
-
-	// try to assert as byte array and convert to int
-	bvalue, ok := rvalue.([]byte)
-	if ok {
-		ivalue64, err := strconv.ParseInt(string(bvalue), 0, 64)
+		fvalue64, err := strconv.ParseFloat(svalue, 64)
 		if err == nil {
-			return int(ivalue64), true
+			return int(fvalue64), true
 		}
 	}
 
@@ -245,7 +254,7 @@ func (c Util) GetFloat(key string) (value float64, ok bool) {
 	rvalue := c.Get(key)
 
 	// try to assert as any number type
-	nvalue, ok := toNumber(rvalue)
+	nvalue, ok := assertAsNumber(rvalue)
 	if ok {
 		return nvalue, true
 	}
@@ -254,15 +263,6 @@ func (c Util) GetFloat(key string) (value float64, ok bool) {
 	svalue, ok := rvalue.(string)
 	if ok {
 		fvalue64, err := strconv.ParseFloat(svalue, 64)
-		if err == nil {
-			return fvalue64, true
-		}
-	}
-
-	// try to assert as byte array and convert to int
-	bvalue, ok := rvalue.([]byte)
-	if ok {
-		fvalue64, err := strconv.ParseFloat(string(bvalue), 64)
 		if err == nil {
 			return fvalue64, true
 		}
@@ -281,16 +281,12 @@ func (c Util) GetString(key string) (value string, ok bool) {
 	if ok {
 		return svalue, true
 	}
-	// try to type assert as byte array and cast to string
-	bvalue, ok := c.Get(key).([]byte)
-	if ok {
-		return string(bvalue), true
-	}
+
 	// can't assert to string, return nil
 	return "", false
 }
 
-func toNumber(val interface{}) (num float64, ok bool) {
+func assertAsNumber(val interface{}) (num float64, ok bool) {
 	switch t := val.(type) {
 	case int:
 		return float64(t), true
