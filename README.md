@@ -112,7 +112,7 @@ Since configuration properties in Consul can be updated during microservice runt
 
 If watch is enabled on a field, its value will be dynamically updated on any change in configuration source, as long as new value is of a proper type. For example, if value in configuration store is set to `'string'` type and is changed to a non-string value, field value will not be updated.
 
-While properties can be watched using config.Bundle object by tagging a field with `config:"watch"`, we can use config.Util to subscribe for changes using `subscribe` function.
+We can use config.Util to subscribe for changes using `subscribe` function.
 
 ```go
 confUtil.Subscribe(watchKey, func(key string, value string) {
