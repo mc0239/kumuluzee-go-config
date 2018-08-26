@@ -3,6 +3,7 @@ package config
 import (
 	"reflect"
 	"strconv"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -121,6 +122,17 @@ func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		Result:  &fieldsMap,
 		TagName: "config",
+		TagFunc: func(tagValue string) {
+			tagParts := strings.Split(tagValue, ",")
+			for _, tag := range tagParts[1:] {
+				lgr.Info("Need to watch: %s", tagValue)
+				if tag == "watch" {
+					util.Subscribe(tagParts[0], func(key, value string) {
+					})
+					break
+				}
+			}
+		},
 	})
 	if err != nil {
 		lgr.Error("Failed to make a new decoder: %s", err.Error())
