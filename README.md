@@ -37,7 +37,7 @@ Properties can be held in a struct using `config.Bundle` or retrieved by using `
 
 **fields** (struct pointer): struct that will be populated with configuration properties. Fields in the struct that will be populated must be exported (starting with an upper-case letter). By default, configuration key is equal to field name, but with first letter lower-cased. Fields can use custom key names by specifying `config` tag.
 
-Fields can be assigned watches by adding a tag `config:",watch"` (note the comma before 'watch', this means field is not being renamed, since we can do both, i.e. `config:"field-name,watch"`).
+Setting a watch with a bundle is currently not supported.
 
 **options** (config.Options): can be used to set an additional configuration source (consul) or custom configuration file path.
 
@@ -49,13 +49,13 @@ import "github.com/mc0239/kumuluzee-go-config/config"
 type myConfig struct {
     Kumuluz struct {
         Name    string
-        Version string `config:",watch"`
+        Version string
         Env     struct {
             Name string
         }
     } `config:"kumuluzee"`
     RestConfig struct {
-        String  string `config:"string-property,watch"`
+        String  string `config:"string-property"`
         Boolean bool   `config:"boolean-property"`
         Integer int    `config:"integer-property"`
     } `config:"rest-config"`

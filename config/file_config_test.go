@@ -120,7 +120,7 @@ func TestFileConfigBundle(t *testing.T) {
 			IP   string `config:"ip"`
 			Port int
 		}
-		Version  string `config:",watch"`
+		Version  string // `config:",watch"`
 		SomeBool bool   `config:"some-boolean,watch"`
 	}
 
