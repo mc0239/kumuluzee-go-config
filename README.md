@@ -11,7 +11,7 @@ KumuluzEE Go Config follows the idea of an unified configuration API for the fra
 You can `go get` this package:
 
 ```
-$ go get github.com/mc0239/kumuluzee-go-config
+$ go get github.com/mc0239/kumuluzee-go-config/config
 ```
 
 ## Setup
