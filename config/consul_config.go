@@ -42,8 +42,14 @@ func initConsulConfigSource(localConfig configSource, lgr *logm.Logm) configSour
 	consulConfig.client = client
 
 	envName := localConfig.Get("kumuluzee.env.name")
+	if envName == nil {
+		envName = "dev"
+	}
 	name := localConfig.Get("kumuluzee.name")
 	version := localConfig.Get("kumuluzee.version")
+	if version == nil {
+		version = "1.0.0"
+	}
 
 	startRetryDelay, ok := localConfig.Get("kumuluzee.config.start-retry-delay-ms").(float64)
 	if !ok {
