@@ -75,6 +75,9 @@ func NewUtil(options Options) Util {
 	case "etcd":
 		// TODO: implement etcd extension
 		break
+	case "":
+		// no extension
+		break
 	default:
 		lgr.Error("Invalid extension specified, extension configuration source will not be available")
 		break
