@@ -47,14 +47,14 @@ func initConsulConfigSource(localConfig configSource, lgr *logm.Logm) configSour
 
 	startRetryDelay, ok := localConfig.Get("kumuluzee.config.start-retry-delay-ms").(float64)
 	if !ok {
-		lgr.Error("Failed to assert value kumuluzee.config.start-retry-delay-ms as float64. Using default value 500.")
+		lgr.Warning("Failed to assert value kumuluzee.config.start-retry-delay-ms as float64. Using default value 500.")
 		startRetryDelay = 500
 	}
 	consulConfig.startRetryDelay = int64(startRetryDelay)
 
 	maxRetryDelay, ok := localConfig.Get("kumuluzee.config.max-retry-delay-ms").(float64)
 	if !ok {
-		lgr.Error("Failed to assert value kumuluzee.config.max-retry-delay-ms as float64. Using default value 900000.")
+		lgr.Warning("Failed to assert value kumuluzee.config.max-retry-delay-ms as float64. Using default value 900000.")
 		maxRetryDelay = 900000
 	}
 	consulConfig.maxRetryDelay = int64(maxRetryDelay)
