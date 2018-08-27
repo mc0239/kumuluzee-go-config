@@ -10,8 +10,8 @@ func fileAssert(t *testing.T, expected interface{}, got interface{}) {
 
 func TestFileConfigGetInt(t *testing.T) {
 	c := NewUtil(Options{
-		FilePath: "../test/config.yaml",
-		LogLevel: 100, // turn off logging
+		ConfigPath: "../test/config.yaml",
+		LogLevel:   100, // turn off logging
 	})
 	if i, ok := c.GetInt("integer-value"); !(ok && i == 36) {
 		fileAssert(t, 36, i)
@@ -35,8 +35,8 @@ func TestFileConfigGetInt(t *testing.T) {
 
 func TestFileConfigGetString(t *testing.T) {
 	c := NewUtil(Options{
-		FilePath: "../test/config.yaml",
-		LogLevel: 100, // turn off logging
+		ConfigPath: "../test/config.yaml",
+		LogLevel:   100, // turn off logging
 	})
 	if s, ok := c.GetString("string-value"); !(ok && s == "hey ho") {
 		fileAssert(t, "hey ho", s)
@@ -55,8 +55,8 @@ func TestFileConfigGetString(t *testing.T) {
 
 func TestFileConfigGetFloat(t *testing.T) {
 	c := NewUtil(Options{
-		FilePath: "../test/config.yaml",
-		LogLevel: 100, // turn off logging
+		ConfigPath: "../test/config.yaml",
+		LogLevel:   100, // turn off logging
 	})
 	if f, ok := c.GetFloat("float-value"); !(ok && f == 11.65425) {
 		fileAssert(t, 11.65425, f)
@@ -75,8 +75,8 @@ func TestFileConfigGetFloat(t *testing.T) {
 
 func TestFileConfigGetBool(t *testing.T) {
 	c := NewUtil(Options{
-		FilePath: "../test/config.yaml",
-		LogLevel: 100, // turn off logging
+		ConfigPath: "../test/config.yaml",
+		LogLevel:   100, // turn off logging
 	})
 	if b, ok := c.GetBool("boolean-value-1"); !(ok && b) {
 		fileAssert(t, true, b)
@@ -99,8 +99,8 @@ func TestFileConfigGetBool(t *testing.T) {
 
 func TestFileConfigUseCase(t *testing.T) {
 	c := NewUtil(Options{
-		FilePath: "../test/config.yaml",
-		LogLevel: 100, // turn off logging
+		ConfigPath: "../test/config.yaml",
+		LogLevel:   100, // turn off logging
 	})
 	if s, ok := c.GetString("some-config.protocol"); !(ok && s == "tcp") {
 		fileAssert(t, "tcp", s)
@@ -127,8 +127,8 @@ func TestFileConfigBundle(t *testing.T) {
 	sc := someConfig{}
 
 	NewBundle("some-config", &sc, Options{
-		FilePath: "../test/config.yaml",
-		LogLevel: 100, // turn off logging
+		ConfigPath: "../test/config.yaml",
+		LogLevel:   100, // turn off logging
 	})
 
 	if sc.Protocol != "tcp" {
@@ -147,8 +147,8 @@ func TestFileConfigBundle(t *testing.T) {
 
 func TestFileConfigDeep(t *testing.T) {
 	c := NewUtil(Options{
-		FilePath: "../test/config.yaml",
-		LogLevel: 100, // turn off logging
+		ConfigPath: "../test/config.yaml",
+		LogLevel:   100, // turn off logging
 	})
 	if i, ok := c.GetInt("deep-config.l1.l2.l_3.l-4.l 5.6l"); !(ok && i == 6) {
 		fileAssert(t, 6, i)

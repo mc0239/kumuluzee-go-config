@@ -10,9 +10,9 @@ func consulAssert(t *testing.T, expected interface{}, got interface{}) {
 
 func TestConsulConfigGetInt(t *testing.T) {
 	c := NewUtil(Options{
-		Extension: "consul",
-		FilePath:  "../test/config-consul.yaml",
-		LogLevel:  100, // turn off logging
+		Extension:  "consul",
+		ConfigPath: "../test/config-consul.yaml",
+		LogLevel:   100, // turn off logging
 	})
 	if i, ok := c.GetInt("integer-value"); !(ok && i == 36) {
 		consulAssert(t, 36, i)
@@ -27,9 +27,9 @@ func TestConsulConfigGetInt(t *testing.T) {
 
 func TestConsulConfigGetString(t *testing.T) {
 	c := NewUtil(Options{
-		Extension: "consul",
-		FilePath:  "../test/config-consul.yaml",
-		LogLevel:  100, // turn off logging
+		Extension:  "consul",
+		ConfigPath: "../test/config-consul.yaml",
+		LogLevel:   100, // turn off logging
 	})
 	if s, ok := c.GetString("string-value"); !(ok && s == "hey ho") {
 		consulAssert(t, "hey ho", s)
@@ -41,9 +41,9 @@ func TestConsulConfigGetString(t *testing.T) {
 
 func TestConsulConfigGetFloat(t *testing.T) {
 	c := NewUtil(Options{
-		Extension: "consul",
-		FilePath:  "../test/config-consul.yaml",
-		LogLevel:  100, // turn off logging
+		Extension:  "consul",
+		ConfigPath: "../test/config-consul.yaml",
+		LogLevel:   100, // turn off logging
 	})
 	if f, ok := c.GetFloat("float-value"); !(ok && f == 11.65425) {
 		consulAssert(t, 11.65425, f)
@@ -58,9 +58,9 @@ func TestConsulConfigGetFloat(t *testing.T) {
 
 func TestConsulConfigGetBool(t *testing.T) {
 	c := NewUtil(Options{
-		Extension: "consul",
-		FilePath:  "../test/config-consul.yaml",
-		LogLevel:  100, // turn off logging
+		Extension:  "consul",
+		ConfigPath: "../test/config-consul.yaml",
+		LogLevel:   100, // turn off logging
 	})
 	if b, ok := c.GetBool("boolean-value-1"); !(ok && b) {
 		consulAssert(t, true, b)
@@ -75,9 +75,9 @@ func TestConsulConfigGetBool(t *testing.T) {
 
 func TestConsulConfigUseCase(t *testing.T) {
 	c := NewUtil(Options{
-		Extension: "consul",
-		FilePath:  "../test/config-consul.yaml",
-		LogLevel:  100, // turn off logging
+		Extension:  "consul",
+		ConfigPath: "../test/config-consul.yaml",
+		LogLevel:   100, // turn off logging
 	})
 	if s, ok := c.GetString("some-config.protocol"); !(ok && s == "tcp") {
 		consulAssert(t, "tcp", s)
@@ -104,9 +104,9 @@ func TestConsulConfigBundle(t *testing.T) {
 	sc := someConfig{}
 
 	NewBundle("some-config", &sc, Options{
-		Extension: "consul",
-		FilePath:  "../test/config-consul.yaml",
-		LogLevel:  100, // turn off logging
+		Extension:  "consul",
+		ConfigPath: "../test/config-consul.yaml",
+		LogLevel:   100, // turn off logging
 	})
 
 	if sc.Protocol != "tcp" {
@@ -125,9 +125,9 @@ func TestConsulConfigBundle(t *testing.T) {
 
 func TestConsulConfigDeep(t *testing.T) {
 	c := NewUtil(Options{
-		Extension: "consul",
-		FilePath:  "../test/config-consul.yaml",
-		LogLevel:  100, // turn off logging
+		Extension:  "consul",
+		ConfigPath: "../test/config-consul.yaml",
+		LogLevel:   100, // turn off logging
 	})
 
 	if i, ok := c.GetInt("deep-config.l1.l2.l_3.l-4.l 5.6l"); !(ok && i == 6) {

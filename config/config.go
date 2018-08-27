@@ -30,9 +30,9 @@ type Bundle struct {
 type Options struct {
 	// Additional configuration source to connect to. Possible values are: "consul"
 	Extension string
-	// FilePath is a path to configuration file, including the configuration file name.
+	// ConfigPath is a path to configuration file, including the configuration file name.
 	// Passing an empty string will default to config/config.yaml
-	FilePath string
+	ConfigPath string
 	// LogLevel can be used to limit the amount of logging output. Default log level is 0. Level 4
 	// will only output Warnings and Errors, and level 5 will only output errors.
 	// See package github.com/mc0239/logm for more details on logging and log levels.
@@ -58,7 +58,7 @@ func NewUtil(options Options) Util {
 		configs = append(configs, envConfigSource)
 	}
 
-	fileConfigSource := initFileConfigSource(options.FilePath, &lgr)
+	fileConfigSource := initFileConfigSource(options.ConfigPath, &lgr)
 	if fileConfigSource != nil {
 		configs = append(configs, fileConfigSource)
 	} else {
