@@ -122,8 +122,9 @@ func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 	var fieldsMap map[string]interface{}
 
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		Result:  &fieldsMap,
-		TagName: "config",
+		Result:     &fieldsMap,
+		TagName:    "config",
+		ZeroFields: false,
 	})
 	if err != nil {
 		lgr.Error("Failed to make a new decoder: %s", err.Error())
@@ -144,8 +145,9 @@ func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 
 	// convert map back to struct
 	recoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		Result:  &fields,
-		TagName: "config",
+		Result:     &fields,
+		TagName:    "config",
+		ZeroFields: false,
 	})
 	if err != nil {
 		lgr.Error("Failed to make a new decoder: %s", err.Error())
@@ -178,16 +180,24 @@ func traverseFillBundle(m map[string]interface{}, keyPrefix string, util Util) {
 		} else {
 			switch t := m[key].(type) {
 			case bool:
-				m[key], _ = util.GetBool(keyPrefix + lkey)
+				if val, ok := util.GetBool(keyPrefix + lkey); ok {
+					m[key] = val
+				}
 				break
 			case float32, float64:
-				m[key], _ = util.GetFloat(keyPrefix + lkey)
+				if val, ok := util.GetFloat(keyPrefix + lkey); ok {
+					m[key] = val
+				}
 				break
 			case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-				m[key], _ = util.GetInt(keyPrefix + lkey)
+				if val, ok := util.GetInt(keyPrefix + lkey); ok {
+					m[key] = val
+				}
 				break
 			case string:
-				m[key], _ = util.GetString(keyPrefix + lkey)
+				if val, ok := util.GetString(keyPrefix + lkey); ok {
+					m[key] = val
+				}
 				break
 			default:
 				util.Logger.Warning("Unexpected type when bundling: %T", t)
