@@ -215,10 +215,7 @@ func (c Util) Subscribe(key string, callback func(key string, value string)) {
 
 	// find extension configSource and deploy a watch
 	for _, cs := range c.configSources {
-		if cs.Name() == "consul" || cs.Name() == "etcd" {
-			cs.Subscribe(key, callback)
-			break
-		}
+		cs.Subscribe(key, callback)
 	}
 
 }
