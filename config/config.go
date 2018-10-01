@@ -48,7 +48,7 @@ type configSource interface {
 
 // NewUtil instantiates a new Util with given options
 func NewUtil(options Options) Util {
-	lgr := logm.New("Kumuluz-config")
+	lgr := logm.New("KumuluzEE-config")
 	lgr.LogLevel = options.LogLevel
 
 	configs := make([]configSource, 0)
@@ -106,7 +106,7 @@ func NewUtil(options Options) Util {
 // Note that you don't have to preserve the returned Bundle struct, as the configuration is written
 // back to the passed fields struct.
 func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
-	lgr := logm.New("Kumuluz-config")
+	lgr := logm.New("KumuluzEE-config")
 	lgr.LogLevel = options.LogLevel
 
 	util := NewUtil(options)
