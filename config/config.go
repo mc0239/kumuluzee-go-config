@@ -216,7 +216,7 @@ func retrieveKey(prefixKey string, field reflect.StructField, tags reflect.Struc
 		}
 	} else {
 		r, n := utf8.DecodeRuneInString(field.Name)
-		lkey := string(unicode.ToLower(r)) + key[n:]
+		lkey := string(unicode.ToLower(r)) + field.Name[n:]
 		key = prefixKey + "." + lkey
 	}
 
