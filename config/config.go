@@ -3,6 +3,7 @@ package config
 import (
 	"reflect"
 	"strconv"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -101,11 +102,44 @@ func NewUtil(options Options) Util {
 	return k
 }
 
+func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
+	lgr := logm.New("KumuluzEE-config")
+	lgr.LogLevel = options.LogLevel
+
+	util := NewUtil(options)
+
+	bun := Bundle{
+		prefixKey: prefixKey,
+		fields:    &fields,
+		conf:      util,
+		Logger:    lgr,
+	}
+
+	traverseStruct(fields, prefixKey,
+		func(key string, value reflect.Value, field reflect.StructField, tags reflect.StructTag) {
+			//key := retrieveKey(prefixKey, field, tags)
+
+			if configVal := util.Get(key); configVal != nil {
+				if field.Type == reflect.TypeOf(configVal) {
+
+					value.Set(reflect.ValueOf(configVal))
+				}
+			}
+
+			// TODO: problems with float64 / int conversion
+
+			// TODO: watch
+		},
+	)
+
+	return bun
+}
+
 // NewBundle instantiates a new Bundle with given options.
 // Fields must be a pointer to a struct that will be filled with configuration values.
 // Note that you don't have to preserve the returned Bundle struct, as the configuration is written
 // back to the passed fields struct.
-func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
+func NewBundle_old(prefixKey string, fields interface{}, options Options) Bundle {
 	lgr := logm.New("KumuluzEE-config")
 	lgr.LogLevel = options.LogLevel
 
@@ -163,6 +197,54 @@ func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 	// TODO: register watches on fields tagged with config:"watch"
 
 	return bun
+}
+
+func retrieveKey(prefixKey string, field reflect.StructField, tags reflect.StructTag) string {
+	// building key: if config tag is defined and has non-empty first value,
+	// use prefixKey + tag, otherwise, use prefixKey + lowercased field name
+	var key string
+
+	if tag, ok := tags.Lookup("config"); ok {
+		tvs := strings.Split(tag, ",")
+		if tvs[0] != "" {
+			key = prefixKey + "." + tvs[0]
+		}
+	} else {
+		key = prefixKey + "." + strings.ToLower(field.Name)
+	}
+
+	return key
+}
+
+func traverseStruct(s interface{}, prefixKey string, fieldProcessFunc func(key string, value reflect.Value, field reflect.StructField, tags reflect.StructTag)) {
+	// passed value is not of type reflect.Value?
+	// I will make passed value of type reflect.Value
+	var val reflect.Value
+	var valType reflect.Type
+	val, ok := s.(reflect.Value)
+	if !ok {
+		val = reflect.ValueOf(s).Elem()
+	}
+	valType = val.Type()
+
+	// iterate through fields (assuming passed value was struct pointer!)
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		//fieldName := valType.Field(i).Name
+		fieldTags := valType.Field(i).Tag
+		//fmt.Printf("%d: %s [%s] %s = %v\n", i, fieldName, fieldTags, field.Kind(), field.Interface())
+
+		key := retrieveKey(prefixKey, valType.Field(i), fieldTags)
+		// if field is a struct, recursively call function to traverse all nested structs aswell
+		if field.Kind() == reflect.Struct {
+			traverseStruct(field, key, fieldProcessFunc)
+		} else {
+			// field processing is only done on fields that aren't nested structs
+			if fieldProcessFunc != nil {
+				fieldProcessFunc(key, field, valType.Field(i), fieldTags)
+			}
+		}
+	}
 }
 
 // recursively traverse the generated map and assign configuration values using Util
