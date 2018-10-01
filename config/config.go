@@ -8,7 +8,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/mc0239/logm"
-	"github.com/mitchellh/mapstructure"
 )
 
 // Util is used for retrieving config values from available sources.
@@ -117,103 +116,61 @@ func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 
 	traverseStruct(fields, prefixKey,
 		func(key string, value reflect.Value, field reflect.StructField, tags reflect.StructTag) {
-			//key := retrieveKey(prefixKey, field, tags)
 
-			if configVal := util.Get(key); configVal != nil {
-				if field.Type == reflect.TypeOf(configVal) {
+			// fill struct value using util
 
-					value.Set(reflect.ValueOf(configVal))
+			switch field.Type.Kind() {
+			case reflect.Bool:
+				if val, ok := util.GetBool(key); ok {
+					value.Set(reflect.ValueOf(val))
+				}
+				break
+			case reflect.String:
+				if val, ok := util.GetString(key); ok {
+					value.Set(reflect.ValueOf(val))
+				}
+				break
+			case reflect.Int:
+				fallthrough
+			case reflect.Int8:
+				fallthrough
+			case reflect.Int16:
+				fallthrough
+			case reflect.Int32:
+				fallthrough
+			case reflect.Int64:
+				if val, ok := util.GetInt(key); ok {
+					value.Set(reflect.ValueOf(val))
+				}
+				break
+			case reflect.Float32:
+				fallthrough
+			case reflect.Float64:
+				if val, ok := util.GetFloat(key); ok {
+					value.Set(reflect.ValueOf(val))
+				}
+				break
+			default:
+				// TODO: ???
+				break
+			}
+
+			// register watch on fields with tag config:",watch"
+
+			if val, ok := tags.Lookup("config"); ok {
+				tags := strings.Split(val, ",")
+				if len(tags) > 1 && tags[1] == "watch" {
+					//fmt.Printf("got em!!! %s\n", field.Name)
+					//modifyValue(value)
+
+					// TODO: watch
 				}
 			}
 
-			// TODO: problems with float64 / int conversion
-
-			// TODO: watch
 		},
 	)
 
 	return bun
-}
-
-// NewBundle instantiates a new Bundle with given options.
-// Fields must be a pointer to a struct that will be filled with configuration values.
-// Note that you don't have to preserve the returned Bundle struct, as the configuration is written
-// back to the passed fields struct.
-func NewBundle_old(prefixKey string, fields interface{}, options Options) Bundle {
-	lgr := logm.New("KumuluzEE-config")
-	lgr.LogLevel = options.LogLevel
-
-	util := NewUtil(options)
-
-	bun := Bundle{
-		prefixKey: prefixKey,
-		fields:    &fields,
-		conf:      util,
-		Logger:    lgr,
-	}
-
-	// convert fields struct to map
-	var fieldsMap map[string]interface{}
-
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		Result:     &fieldsMap,
-		TagName:    "config",
-		ZeroFields: false,
-	})
-	if err != nil {
-		lgr.Error("Failed to make a new decoder: %s", err.Error())
-		return bun
-	}
-
-	err = decoder.Decode(fields)
-	if err != nil {
-		lgr.Error("Failed to decode fields: %s", err.Error())
-		return bun
-	}
-
-	// recursively traverse all fields and set their values using Util.Get()
-	if prefixKey != "" {
-		prefixKey += "."
-	}
-	traverseFillBundle(fieldsMap, prefixKey, util)
-
-	// convert map back to struct
-	recoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		Result:     &fields,
-		TagName:    "config",
-		ZeroFields: false,
-	})
-	if err != nil {
-		lgr.Error("Failed to make a new decoder: %s", err.Error())
-		return bun
-	}
-
-	err = recoder.Decode(fieldsMap)
-	if err != nil {
-		lgr.Error("Failed to recode fieldsMap: %s", err.Error())
-		return bun
-	}
-
-	// TODO: register watches on fields tagged with config:"watch"
-
-	return bun
-}
-
-func retrieveKey(prefixKey string, field reflect.StructField, tags reflect.StructTag) string {
-	// building key: if config tag is defined and has non-empty first value,
-	// use prefixKey + tag, otherwise, use prefixKey + lowercased field name
-	var key string
-
-	if tag, ok := tags.Lookup("config"); ok {
-		tvs := strings.Split(tag, ",")
-		if tvs[0] != "" {
-			key = prefixKey + "." + tvs[0]
-		}
-	} else {
-		key = prefixKey + "." + strings.ToLower(field.Name)
-	}
-
-	return key
 }
 
 func traverseStruct(s interface{}, prefixKey string, fieldProcessFunc func(key string, value reflect.Value, field reflect.StructField, tags reflect.StructTag)) {
@@ -247,46 +204,23 @@ func traverseStruct(s interface{}, prefixKey string, fieldProcessFunc func(key s
 	}
 }
 
-// recursively traverse the generated map and assign configuration values using Util
-func traverseFillBundle(m map[string]interface{}, keyPrefix string, util Util) {
-	for key := range m {
-		// if config tag is not defined, the key is the same as the name of the field.
-		// Since exposed struct fields are capitalized, we make the first letter lower-case
-		// (capitalized key can be explicitely assigned by using config tag on field)
-		r, n := utf8.DecodeRuneInString(key)
-		lkey := string(unicode.ToLower(r)) + key[n:]
+func retrieveKey(prefixKey string, field reflect.StructField, tags reflect.StructTag) string {
+	// building key: if config tag is defined and has non-empty first value,
+	// use prefixKey + tag, otherwise, use prefixKey + lowercased field name
+	var key string
 
-		valType := reflect.TypeOf(m[key])
-		if valType.Kind() == reflect.Map {
-			traverseFillBundle(m[key].(map[string]interface{}), keyPrefix+lkey+".", util)
-		} else {
-			switch t := m[key].(type) {
-			case bool:
-				if val, ok := util.GetBool(keyPrefix + lkey); ok {
-					m[key] = val
-				}
-				break
-			case float32, float64:
-				if val, ok := util.GetFloat(keyPrefix + lkey); ok {
-					m[key] = val
-				}
-				break
-			case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-				if val, ok := util.GetInt(keyPrefix + lkey); ok {
-					m[key] = val
-				}
-				break
-			case string:
-				if val, ok := util.GetString(keyPrefix + lkey); ok {
-					m[key] = val
-				}
-				break
-			default:
-				util.Logger.Warning("Unexpected type when bundling: %T", t)
-				break
-			}
+	if tag, ok := tags.Lookup("config"); ok {
+		tvs := strings.Split(tag, ",")
+		if tvs[0] != "" {
+			key = prefixKey + "." + tvs[0]
 		}
+	} else {
+		r, n := utf8.DecodeRuneInString(field.Name)
+		lkey := string(unicode.ToLower(r)) + key[n:]
+		key = prefixKey + "." + lkey
 	}
+
+	return key
 }
 
 // Subscribe creates a watch on a given configuration key.
