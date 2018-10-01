@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/mc0239/logm"
 )
@@ -118,52 +116,18 @@ func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 		func(key string, value reflect.Value, field reflect.StructField, tags reflect.StructTag) {
 
 			// fill struct value using util
-
-			switch field.Type.Kind() {
-			case reflect.Bool:
-				if val, ok := util.GetBool(key); ok {
-					value.Set(reflect.ValueOf(val))
-				}
-				break
-			case reflect.String:
-				if val, ok := util.GetString(key); ok {
-					value.Set(reflect.ValueOf(val))
-				}
-				break
-			case reflect.Int:
-				fallthrough
-			case reflect.Int8:
-				fallthrough
-			case reflect.Int16:
-				fallthrough
-			case reflect.Int32:
-				fallthrough
-			case reflect.Int64:
-				if val, ok := util.GetInt(key); ok {
-					value.Set(reflect.ValueOf(val))
-				}
-				break
-			case reflect.Float32:
-				fallthrough
-			case reflect.Float64:
-				if val, ok := util.GetFloat(key); ok {
-					value.Set(reflect.ValueOf(val))
-				}
-				break
-			default:
-				// TODO: ???
-				break
-			}
+			setValueWithReflect(key, value, field, bun)
 
 			// register watch on fields with tag config:",watch"
 
-			if val, ok := tags.Lookup("config"); ok {
-				tags := strings.Split(val, ",")
-				if len(tags) > 1 && tags[1] == "watch" {
-					//fmt.Printf("got em!!! %s\n", field.Name)
-					//modifyValue(value)
-
-					// TODO: watch
+			if tag, ok := tags.Lookup("config"); ok {
+				tagVals := strings.Split(tag, ",")
+				if len(tagVals) > 1 && tagVals[1] == "watch" {
+					util.Subscribe(key, func(watchKey string, newValue string) {
+						setValueWithReflect(key, value, field, bun)
+						//value.Set(reflect.ValueOf(newValue))
+						lgr.Verbose("Watched value %s updated, new value: %s", key, newValue)
+					})
 				}
 			}
 
@@ -171,56 +135,6 @@ func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 	)
 
 	return bun
-}
-
-func traverseStruct(s interface{}, prefixKey string, fieldProcessFunc func(key string, value reflect.Value, field reflect.StructField, tags reflect.StructTag)) {
-	// passed value is not of type reflect.Value?
-	// I will make passed value of type reflect.Value
-	var val reflect.Value
-	var valType reflect.Type
-	val, ok := s.(reflect.Value)
-	if !ok {
-		val = reflect.ValueOf(s).Elem()
-	}
-	valType = val.Type()
-
-	// iterate through fields (assuming passed value was struct pointer!)
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
-		//fieldName := valType.Field(i).Name
-		fieldTags := valType.Field(i).Tag
-		//fmt.Printf("%d: %s [%s] %s = %v\n", i, fieldName, fieldTags, field.Kind(), field.Interface())
-
-		key := retrieveKey(prefixKey, valType.Field(i), fieldTags)
-		// if field is a struct, recursively call function to traverse all nested structs aswell
-		if field.Kind() == reflect.Struct {
-			traverseStruct(field, key, fieldProcessFunc)
-		} else {
-			// field processing is only done on fields that aren't nested structs
-			if fieldProcessFunc != nil {
-				fieldProcessFunc(key, field, valType.Field(i), fieldTags)
-			}
-		}
-	}
-}
-
-func retrieveKey(prefixKey string, field reflect.StructField, tags reflect.StructTag) string {
-	// building key: if config tag is defined and has non-empty first value,
-	// use prefixKey + tag, otherwise, use prefixKey + lowercased field name
-	var key string
-
-	if tag, ok := tags.Lookup("config"); ok {
-		tvs := strings.Split(tag, ",")
-		if tvs[0] != "" {
-			key = prefixKey + "." + tvs[0]
-		}
-	} else {
-		r, n := utf8.DecodeRuneInString(field.Name)
-		lkey := string(unicode.ToLower(r)) + field.Name[n:]
-		key = prefixKey + "." + lkey
-	}
-
-	return key
 }
 
 // Subscribe creates a watch on a given configuration key.

@@ -33,11 +33,11 @@ func initConsulConfigSource(localConfig configSource, lgr *logm.Logm) configSour
 
 	client, err := api.NewClient(clientConfig)
 	if err != nil {
-		lgr.Error(fmt.Sprintf("Failed to create Consul client: %s", err.Error()))
+		lgr.Error("Failed to create Consul client: %s", err.Error())
 		return nil
 	}
 
-	lgr.Info(fmt.Sprintf("Consul client address set to %v", clientConfig.Address))
+	lgr.Info("Consul client address set to %v", clientConfig.Address)
 
 	consulConfig.client = client
 
@@ -67,7 +67,7 @@ func initConsulConfigSource(localConfig configSource, lgr *logm.Logm) configSour
 
 	consulConfig.path = fmt.Sprintf("environments/%s/services/%s/%s/config", envName, name, version)
 
-	lgr.Info(fmt.Sprintf("Consul key-value namespace: %s", consulConfig.path))
+	lgr.Info("Consul key-value namespace: %s", consulConfig.path)
 
 	lgr.Verbose("Initialized ConsulConfigSource")
 	return consulConfig
@@ -86,7 +86,7 @@ func (c consulConfigSource) Get(key string) interface{} {
 
 	pair, _, err := kv.Get(path.Join(c.path, key), nil)
 	if err != nil {
-		c.logger.Warning(fmt.Sprintf("Error getting value: %v", err))
+		c.logger.Warning("Error getting value: %v", err)
 		return nil
 	}
 
@@ -99,7 +99,7 @@ func (c consulConfigSource) Get(key string) interface{} {
 }
 
 func (c consulConfigSource) Subscribe(key string, callback func(key string, value string)) {
-	c.logger.Info(fmt.Sprintf("Creating a watch for key %s, source: %s", key, c.Name()))
+	c.logger.Info("Creating a watch for key %s, source: %s", key, c.Name())
 	go c.watch(key, "", c.startRetryDelay, callback, 0)
 }
 
@@ -107,7 +107,7 @@ func (c consulConfigSource) watch(key string, previousValue string, retryDelay i
 
 	// TODO: have a parameter for watch duration, (likely reads from config.yaml?)
 	t := 10 * time.Minute
-	c.logger.Verbose(fmt.Sprintf("Set a watch on key %s with %s wait time", key, t))
+	c.logger.Verbose("Set a watch on key %s with %s wait time", key, t)
 
 	q := api.QueryOptions{
 		WaitIndex: waitIndex,
@@ -118,7 +118,7 @@ func (c consulConfigSource) watch(key string, previousValue string, retryDelay i
 	pair, meta, err := c.client.KV().Get(path.Join(c.path, key), &q)
 
 	if err != nil {
-		c.logger.Warning(fmt.Sprintf("Watch on %s failed with error: %s, retry delay: %d ms", key, err.Error(), retryDelay))
+		c.logger.Warning("Watch on %s failed with error: %s, retry delay: %d ms", key, err.Error(), retryDelay)
 
 		// sleep for current delay
 		time.Sleep(time.Duration(retryDelay) * time.Millisecond)
@@ -132,7 +132,7 @@ func (c consulConfigSource) watch(key string, previousValue string, retryDelay i
 		return
 	}
 
-	c.logger.Verbose(fmt.Sprintf("Wait time (%s) on watch for key %s reached.", key, t))
+	c.logger.Verbose("Wait time (%s) on watch for key %s reached.", key, t)
 
 	if pair != nil {
 		if string(pair.Value) != previousValue {
