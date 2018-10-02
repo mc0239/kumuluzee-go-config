@@ -9,7 +9,7 @@ import (
 type envConfigSource struct {
 }
 
-func initEnvConfigSource(lgr *logm.Logm) configSource {
+func newEnvConfigSource(lgr *logm.Logm) configSource {
 	lgr.Verbose("Initializing EnvConfigSource")
 	var c envConfigSource
 	lgr.Verbose("Initialized EnvConfigSource")

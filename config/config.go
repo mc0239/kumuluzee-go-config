@@ -51,12 +51,12 @@ func NewUtil(options Options) Util {
 
 	configs := make([]configSource, 0)
 
-	envConfigSource := initEnvConfigSource(&lgr)
+	envConfigSource := newEnvConfigSource(&lgr)
 	if envConfigSource != nil {
 		configs = append(configs, envConfigSource)
 	}
 
-	fileConfigSource := initFileConfigSource(options.ConfigPath, &lgr)
+	fileConfigSource := newFileConfigSource(options.ConfigPath, &lgr)
 	if fileConfigSource != nil {
 		configs = append(configs, fileConfigSource)
 	} else {
@@ -65,7 +65,7 @@ func NewUtil(options Options) Util {
 
 	switch options.Extension {
 	case "consul":
-		extConfigSource := initConsulConfigSource(fileConfigSource, &lgr)
+		extConfigSource := newConsulConfigSource(fileConfigSource, &lgr)
 		if extConfigSource != nil {
 			configs = append(configs, extConfigSource)
 		}

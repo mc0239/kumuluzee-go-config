@@ -14,7 +14,7 @@ type fileConfigSource struct {
 	logger *logm.Logm
 }
 
-func initFileConfigSource(configPath string, lgr *logm.Logm) configSource {
+func newFileConfigSource(configPath string, lgr *logm.Logm) configSource {
 	lgr.Verbose("Initializing FileConfigSource")
 	var c fileConfigSource
 	c.logger = lgr

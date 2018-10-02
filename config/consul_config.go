@@ -19,7 +19,7 @@ type consulConfigSource struct {
 	logger          *logm.Logm
 }
 
-func initConsulConfigSource(localConfig configSource, lgr *logm.Logm) configSource {
+func newConsulConfigSource(localConfig configSource, lgr *logm.Logm) configSource {
 	lgr.Verbose("Initializing ConsulConfigSource")
 	var consulConfig consulConfigSource
 	consulConfig.logger = lgr
