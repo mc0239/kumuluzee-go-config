@@ -35,11 +35,9 @@ Properties can be held in a struct using `config.Bundle` or retrieved by using `
 
 **prefixKey** (string): value represents the prefix key for the configuration property keys use "" (empty string) for no prefix.
 
-**fields** (struct pointer): struct that will be populated with configuration properties. Fields in the struct that will be populated must be exported (starting with an upper-case letter). By default, configuration key is equal to field name, but with first letter lower-cased. Fields can use custom key names by specifying `config` tag.
+**fields** (struct pointer): struct that will be populated with configuration properties. Fields in the struct that will be populated must be exported (starting with an upper-case letter). By default, configuration key is equal to field name, but with first letter lower-cased. Fields can use custom key names by specifying `config` tag. Watches can be set on fields by using `config` tag aswell.
 
-Setting a watch with a bundle is currently not supported.
-
-**options** (config.Options): can be used to set an additional configuration source (consul) or custom configuration file path.
+**options** (config.Options): can be used to set an additional configuration source (Consul) or custom configuration file path.
 
 ```go
 // import package
@@ -55,7 +53,7 @@ type myConfig struct {
         }
     } `config:"kumuluzee"`
     RestConfig struct {
-        String  string `config:"string-property"`
+        String  string `config:"string-property,watch"`
         Boolean bool   `config:"boolean-property"`
         Integer int    `config:"integer-property"`
     } `config:"rest-config"`
@@ -68,11 +66,9 @@ config.NewBundle("", &myconf, config.Options{})
 
 ### config.Util
 
-It is used for retrieving values of configuration parameters from the configuration framework.
-
 *config.NewUtil(options)*
 
-**options** (config.Options): can be used to set an additional configuration source (consul) or custom configuration file path.
+**options** (config.Options): can be used to set an additional configuration source (Consul) or custom configuration file path.
 
 ```go
 // import package
@@ -95,7 +91,7 @@ Returned value is of type `interface{}` and should be type asserted before furth
 property := confUtil.Get("some-property")
 ```
 
-There are additional functions available for getting a specific type:
+There are additional helper functions available for getting a specific type:
 
 ```go
 value, ok := confUtil.GetBool(key) // bool
@@ -112,7 +108,7 @@ Since configuration properties in Consul can be updated during microservice runt
 
 If watch is enabled on a field, its value will be dynamically updated on any change in configuration source, as long as new value is of a proper type. For example, if value in configuration store is set to `'string'` type and is changed to a non-string value, field value will not be updated.
 
-We can use config.Util to subscribe for changes using `subscribe` function.
+While properties can be watched using config.Bundle by setting a watch tag on struct field, we can use config.Util to subscribe for changes using `subscribe` function.
 
 ```go
 confUtil.Subscribe(watchKey, func(key string, value string) {
