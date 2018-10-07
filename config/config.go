@@ -71,7 +71,10 @@ func NewUtil(options Options) Util {
 		}
 		break
 	case "etcd":
-		// TODO: implement etcd extension
+		extConfigSource := newEtcdConfigSource(fileConfigSource, &lgr)
+		if extConfigSource != nil {
+			configs = append(configs, extConfigSource)
+		}
 		break
 	case "":
 		// no extension
