@@ -25,43 +25,24 @@ func newEtcdConfigSource(conf Util, lgr *logm.Logm) configSource {
 	lgr.Verbose("Initializing %s config source", etcdConfig.Name())
 	etcdConfig.logger = lgr
 
-	// Initialize etcd client
-	clientConfig := client.Config{}
-
-	if etcdAddress, ok := conf.GetString("kumuluzee.config.etcd.hosts"); ok {
-		clientConfig.Endpoints = []string{etcdAddress}
+	var etcdAddress string
+	if addr, ok := conf.GetString("kumuluzee.config.etcd.hosts"); ok {
+		etcdAddress = addr
 	}
-
-	cl, err := client.New(clientConfig)
-	if err != nil {
+	if client, err := createEtcdClient(etcdAddress); err == nil {
+		lgr.Info("etcd client address set to %v", etcdAddress)
+		etcdConfig.client = client
+	} else {
 		lgr.Error("Failed to create etcd client: %s", err.Error())
-		return nil
-	}
-	lgr.Info("etcd client address set to %v", clientConfig.Endpoints)
-	etcdConfig.client = &cl
-
-	// Load service config from file
-	envName := getOrDefault(conf, "kumuluzee.env.name", "dev")
-	name := getOrDefault(conf, "kumuluzee.name", nil)
-	version := getOrDefault(conf, "kumuluzee.version", "1.0.0")
-
-	if sdl, ok := conf.GetInt("kumuluzee.config.start-retry-delay-ms"); ok {
-		etcdConfig.startRetryDelay = int64(sdl)
-	} else {
-		etcdConfig.startRetryDelay = 500
 	}
 
-	if mdl, ok := conf.GetInt("kumuluzee.config.max-retry-delay-ms"); ok {
-		etcdConfig.maxRetryDelay = int64(mdl)
-	} else {
-		etcdConfig.maxRetryDelay = 900000
-	}
-
+	envName, name, version, startRD, maxRD := loadServiceConfiguration(conf)
+	etcdConfig.startRetryDelay = startRD
+	etcdConfig.maxRetryDelay = maxRD
 	lgr.Verbose("start-retry-delay-ms=%d, max-retry-delay-ms=%d", etcdConfig.startRetryDelay, etcdConfig.maxRetryDelay)
 
 	etcdConfig.path = fmt.Sprintf("environments/%s/services/%s/%s/config", envName, name, version)
 
-	//
 	lgr.Info("etcd key-value namespace: %s", etcdConfig.path)
 	lgr.Verbose("Initialized %s config source", etcdConfig.Name())
 	return etcdConfig
@@ -95,7 +76,7 @@ func (c etcdConfigSource) ordinal() int {
 	return 150
 }
 
-//
+// functions that aren't configSource methods
 
 func (c etcdConfigSource) watch(key string, previousValue string, retryDelay int64, callback func(key string, value string)) {
 
@@ -128,4 +109,17 @@ func (c etcdConfigSource) watch(key string, previousValue string, retryDelay int
 		callback(key, string(resp.Node.Value))
 	}
 	c.watch(key, string(resp.Node.Value), c.startRetryDelay, callback)
+}
+
+// functions that aren't configSource methods or etcdCondigSource methods
+
+func createEtcdClient(address string) (*client.Client, error) {
+	clientConfig := client.Config{}
+	clientConfig.Endpoints = []string{address}
+
+	cl, err := client.New(clientConfig)
+	if err != nil {
+		return nil, err
+	}
+	return &cl, nil
 }

@@ -1,11 +1,33 @@
 package config
 
-func getOrDefault(c Util, key string, defaultValue interface{}) interface{} {
-	val := c.Get(key)
-	if val == nil {
-		val = defaultValue
+func loadServiceConfiguration(conf Util) (envName, name, version string, startRD, maxRD int64) {
+	if e, ok := conf.GetString("kumuluzee.env.name"); ok {
+		envName = e
+	} else {
+		envName = "dev"
 	}
-	return val
+
+	name, _ = conf.GetString("kumuluzee.name")
+
+	if v, ok := conf.GetString("kumuluzee.version"); ok {
+		version = v
+	} else {
+		envName = "1.0.0"
+	}
+
+	if sdl, ok := conf.GetInt("kumuluzee.config.start-retry-delay-ms"); ok {
+		startRD = int64(sdl)
+	} else {
+		startRD = 500
+	}
+
+	if mdl, ok := conf.GetInt("kumuluzee.config.max-retry-delay-ms"); ok {
+		maxRD = int64(mdl)
+	} else {
+		maxRD = 900000
+	}
+
+	return
 }
 
 func assertAsNumber(val interface{}) (num float64, ok bool) {

@@ -24,43 +24,24 @@ func newConsulConfigSource(conf Util, lgr *logm.Logm) configSource {
 	lgr.Verbose("Initializing %s config source", consulConfig.Name())
 	consulConfig.logger = lgr
 
-	// Initialize consul client
-	clientConfig := api.DefaultConfig()
-
-	if consulAddress, ok := conf.GetString("kumuluzee.config.consul.hosts"); ok {
-		clientConfig.Address = consulAddress
+	var consulAddress string
+	if addr, ok := conf.GetString("kumuluzee.config.consul.hosts"); ok {
+		consulAddress = addr
 	}
-
-	client, err := api.NewClient(clientConfig)
-	if err != nil {
+	if client, err := createConsulClient(consulAddress); err == nil {
+		lgr.Info("Consul client address set to %v", consulAddress)
+		consulConfig.client = client
+	} else {
 		lgr.Error("Failed to create Consul client: %s", err.Error())
-		return nil
-	}
-	lgr.Info("Consul client address set to %v", clientConfig.Address)
-	consulConfig.client = client
-
-	// Load service config from file
-	envName := getOrDefault(conf, "kumuluzee.env.name", "dev")
-	name := getOrDefault(conf, "kumuluzee.name", nil)
-	version := getOrDefault(conf, "kumuluzee.version", "1.0.0")
-
-	if sdl, ok := conf.GetInt("kumuluzee.config.start-retry-delay-ms"); ok {
-		consulConfig.startRetryDelay = int64(sdl)
-	} else {
-		consulConfig.startRetryDelay = 500
 	}
 
-	if mdl, ok := conf.GetInt("kumuluzee.config.max-retry-delay-ms"); ok {
-		consulConfig.maxRetryDelay = int64(mdl)
-	} else {
-		consulConfig.maxRetryDelay = 900000
-	}
-
+	envName, name, version, startRD, maxRD := loadServiceConfiguration(conf)
+	consulConfig.startRetryDelay = startRD
+	consulConfig.maxRetryDelay = maxRD
 	lgr.Verbose("start-retry-delay-ms=%d, max-retry-delay-ms=%d", consulConfig.startRetryDelay, consulConfig.maxRetryDelay)
 
 	consulConfig.path = fmt.Sprintf("environments/%s/services/%s/%s/config", envName, name, version)
 
-	//
 	lgr.Info("%s key-value namespace: %s", consulConfig.Name(), consulConfig.path)
 	lgr.Verbose("Initialized %s config source", consulConfig.Name())
 	return consulConfig
@@ -100,7 +81,7 @@ func (c consulConfigSource) ordinal() int {
 	return 150
 }
 
-//
+// functions that aren't configSource methods
 
 func (c consulConfigSource) watch(key string, previousValue string, retryDelay int64, callback func(key string, value string), waitIndex uint64) {
 
@@ -145,4 +126,17 @@ func (c consulConfigSource) watch(key string, previousValue string, retryDelay i
 		}
 		c.watch(key, "", c.startRetryDelay, callback, lastIndex)
 	}
+}
+
+// functions that aren't configSource methods or etcdCondigSource methods
+
+func createConsulClient(address string) (*api.Client, error) {
+	clientConfig := api.DefaultConfig()
+	clientConfig.Address = address
+
+	client, err := api.NewClient(clientConfig)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
