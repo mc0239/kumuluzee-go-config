@@ -19,7 +19,7 @@ type consulConfigSource struct {
 	logger          *logm.Logm
 }
 
-func newConsulConfigSource(localConfig configSource, lgr *logm.Logm) configSource {
+func newConsulConfigSource(conf Util, lgr *logm.Logm) configSource {
 	var consulConfig consulConfigSource
 	lgr.Verbose("Initializing %s config source", consulConfig.Name())
 	consulConfig.logger = lgr
@@ -27,8 +27,8 @@ func newConsulConfigSource(localConfig configSource, lgr *logm.Logm) configSourc
 	// Initialize consul client
 	clientConfig := api.DefaultConfig()
 
-	if consulAddress := localConfig.Get("kumuluzee.config.consul.hosts"); consulAddress != nil {
-		clientConfig.Address = consulAddress.(string)
+	if consulAddress, ok := conf.GetString("kumuluzee.config.consul.hosts"); ok {
+		clientConfig.Address = consulAddress
 	}
 
 	client, err := api.NewClient(clientConfig)
@@ -40,21 +40,23 @@ func newConsulConfigSource(localConfig configSource, lgr *logm.Logm) configSourc
 	consulConfig.client = client
 
 	// Load service config from file
-	envName := getOrDefault(localConfig, "kumuluzee.env.name", "dev")
-	name := getOrDefault(localConfig, "kumuluzee.name", nil)
-	version := getOrDefault(localConfig, "kumuluzee.version", "1.0.0")
+	envName := getOrDefault(conf, "kumuluzee.env.name", "dev")
+	name := getOrDefault(conf, "kumuluzee.name", nil)
+	version := getOrDefault(conf, "kumuluzee.version", "1.0.0")
 
-	if sdl, ok := localConfig.Get("kumuluzee.config.start-retry-delay-ms").(int64); ok {
-		consulConfig.startRetryDelay = sdl
+	if sdl, ok := conf.GetInt("kumuluzee.config.start-retry-delay-ms"); ok {
+		consulConfig.startRetryDelay = int64(sdl)
 	} else {
 		consulConfig.startRetryDelay = 500
 	}
 
-	if mdl, ok := localConfig.Get("kumuluzee.config.max-retry-delay-ms").(int64); ok {
-		consulConfig.maxRetryDelay = mdl
+	if mdl, ok := conf.GetInt("kumuluzee.config.max-retry-delay-ms"); ok {
+		consulConfig.maxRetryDelay = int64(mdl)
 	} else {
 		consulConfig.maxRetryDelay = 900000
 	}
+
+	lgr.Verbose("start-retry-delay-ms=%d, max-retry-delay-ms=%d", consulConfig.startRetryDelay, consulConfig.maxRetryDelay)
 
 	consulConfig.path = fmt.Sprintf("environments/%s/services/%s/%s/config", envName, name, version)
 
@@ -102,15 +104,12 @@ func (c consulConfigSource) ordinal() int {
 
 func (c consulConfigSource) watch(key string, previousValue string, retryDelay int64, callback func(key string, value string), waitIndex uint64) {
 
-	// TODO: have a parameter for watch duration, (likely reads from config.yaml?)
-	t := 10 * time.Minute
-	c.logger.Verbose("Set a watch on key %s with %s wait time", key, t)
-
 	q := api.QueryOptions{
 		WaitIndex: waitIndex,
 		WaitTime:  10 * time.Minute,
 	}
 
+	c.logger.Verbose("Setting a watch on key %s with %s wait time", key, q.WaitTime)
 	key = strings.Replace(key, ".", "/", -1)
 	pair, meta, err := c.client.KV().Get(path.Join(c.path, key), &q)
 
@@ -129,7 +128,7 @@ func (c consulConfigSource) watch(key string, previousValue string, retryDelay i
 		return
 	}
 
-	c.logger.Verbose("Wait time (%s) on watch for key %s reached.", key, t)
+	c.logger.Verbose("Wait time (%s) on watch for key %s reached.", q.WaitTime, key)
 
 	if pair != nil {
 		if string(pair.Value) != previousValue {

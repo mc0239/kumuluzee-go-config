@@ -20,7 +20,7 @@ type etcdConfigSource struct {
 	logger          *logm.Logm
 }
 
-func newEtcdConfigSource(localConfig configSource, lgr *logm.Logm) configSource {
+func newEtcdConfigSource(conf Util, lgr *logm.Logm) configSource {
 	var etcdConfig etcdConfigSource
 	lgr.Verbose("Initializing %s config source", etcdConfig.Name())
 	etcdConfig.logger = lgr
@@ -28,8 +28,8 @@ func newEtcdConfigSource(localConfig configSource, lgr *logm.Logm) configSource 
 	// Initialize etcd client
 	clientConfig := client.Config{}
 
-	if etcdAddress := localConfig.Get("kumuluzee.config.etcd.hosts"); etcdAddress != nil {
-		clientConfig.Endpoints = []string{etcdAddress.(string)}
+	if etcdAddress, ok := conf.GetString("kumuluzee.config.etcd.hosts"); ok {
+		clientConfig.Endpoints = []string{etcdAddress}
 	}
 
 	cl, err := client.New(clientConfig)
@@ -41,26 +41,28 @@ func newEtcdConfigSource(localConfig configSource, lgr *logm.Logm) configSource 
 	etcdConfig.client = &cl
 
 	// Load service config from file
-	envName := getOrDefault(localConfig, "kumuluzee.env.name", "dev")
-	name := getOrDefault(localConfig, "kumuluzee.name", nil)
-	version := getOrDefault(localConfig, "kumuluzee.version", "1.0.0")
+	envName := getOrDefault(conf, "kumuluzee.env.name", "dev")
+	name := getOrDefault(conf, "kumuluzee.name", nil)
+	version := getOrDefault(conf, "kumuluzee.version", "1.0.0")
 
-	if sdl, ok := localConfig.Get("kumuluzee.config.start-retry-delay-ms").(int64); ok {
-		etcdConfig.startRetryDelay = sdl
+	if sdl, ok := conf.GetInt("kumuluzee.config.start-retry-delay-ms"); ok {
+		etcdConfig.startRetryDelay = int64(sdl)
 	} else {
 		etcdConfig.startRetryDelay = 500
 	}
 
-	if mdl, ok := localConfig.Get("kumuluzee.config.max-retry-delay-ms").(int64); ok {
-		etcdConfig.maxRetryDelay = mdl
+	if mdl, ok := conf.GetInt("kumuluzee.config.max-retry-delay-ms"); ok {
+		etcdConfig.maxRetryDelay = int64(mdl)
 	} else {
 		etcdConfig.maxRetryDelay = 900000
 	}
 
+	lgr.Verbose("start-retry-delay-ms=%d, max-retry-delay-ms=%d", etcdConfig.startRetryDelay, etcdConfig.maxRetryDelay)
+
 	etcdConfig.path = fmt.Sprintf("environments/%s/services/%s/%s/config", envName, name, version)
 
+	//
 	lgr.Info("etcd key-value namespace: %s", etcdConfig.path)
-
 	lgr.Verbose("Initialized %s config source", etcdConfig.Name())
 	return etcdConfig
 }
@@ -97,10 +99,7 @@ func (c etcdConfigSource) ordinal() int {
 
 func (c etcdConfigSource) watch(key string, previousValue string, retryDelay int64, callback func(key string, value string)) {
 
-	// TODO: have a parameter for watch duration, (likely reads from config.yaml?)
-	t := 10 * time.Minute
-	c.logger.Verbose("Set a watch on key %s with %s wait time", key, t)
-	// TODO: where is timeout set????
+	c.logger.Verbose("Set a watch on key %s", key)
 
 	key = strings.Replace(key, ".", "/", -1)
 	kv := client.NewKeysAPI(*c.client)
@@ -123,7 +122,7 @@ func (c etcdConfigSource) watch(key string, previousValue string, retryDelay int
 		return
 	}
 
-	c.logger.Verbose("Wait time (%s) on watch for key %s reached.", key, t)
+	c.logger.Verbose("Wait time on watch for key %s reached.", key)
 
 	if string(resp.Node.Value) != previousValue {
 		callback(key, string(resp.Node.Value))

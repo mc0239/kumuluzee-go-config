@@ -51,8 +51,7 @@ func NewUtil(options Options) Util {
 
 	configs := make([]configSource, 0)
 
-	envConfigSource := newEnvConfigSource(&lgr)
-	if envConfigSource != nil {
+	if envConfigSource := newEnvConfigSource(&lgr); envConfigSource != nil {
 		configs = append(configs, envConfigSource)
 	}
 
@@ -63,18 +62,22 @@ func NewUtil(options Options) Util {
 		lgr.Error("File configuration source failed to load!")
 	}
 
+	k := Util{
+		configs,
+		lgr,
+	}
+
+	k.sortConfigSources()
+
+	// use already initialized env/file config util to get values for initialization of extension
+	// config source (consul/etcd)
+	var extConfigSource configSource
 	switch options.Extension {
 	case "consul":
-		extConfigSource := newConsulConfigSource(fileConfigSource, &lgr)
-		if extConfigSource != nil {
-			configs = append(configs, extConfigSource)
-		}
+		extConfigSource = newConsulConfigSource(k, &lgr)
 		break
 	case "etcd":
-		extConfigSource := newEtcdConfigSource(fileConfigSource, &lgr)
-		if extConfigSource != nil {
-			configs = append(configs, extConfigSource)
-		}
+		extConfigSource = newEtcdConfigSource(k, &lgr)
 		break
 	case "":
 		// no extension
@@ -84,24 +87,17 @@ func NewUtil(options Options) Util {
 		break
 	}
 
-	// insertion sort
-	for i := 1; i < len(configs); i++ {
-		for k := i; k > 0 && configs[k].ordinal() > configs[k-1].ordinal(); k-- {
-			// swap
-			temp := configs[k]
-			configs[k] = configs[k-1]
-			configs[k-1] = temp
-		}
+	// if extension config source was successfuly initialized, add it to sources and sort again
+	if extConfigSource != nil {
+		k.configSources = append(k.configSources, extConfigSource)
 	}
 
-	k := Util{
-		configs,
-		lgr,
-	}
+	k.sortConfigSources()
 
 	return k
 }
 
+// NewBundle fills the given fields struct with values from loaded configuration
 func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 	lgr := logm.New("KumuluzEE-config")
 	lgr.LogLevel = options.LogLevel
@@ -259,4 +255,17 @@ func (c Util) GetString(key string) (value string, ok bool) {
 
 	// can't assert to string, return nil
 	return "", false
+}
+
+// sort config sources by ordinal numbers
+func (c Util) sortConfigSources() {
+	// insertion sort
+	for i := 1; i < len(c.configSources); i++ {
+		for k := i; k > 0 && c.configSources[k].ordinal() > c.configSources[k-1].ordinal(); k-- {
+			// swap
+			temp := c.configSources[k]
+			c.configSources[k] = c.configSources[k-1]
+			c.configSources[k-1] = temp
+		}
+	}
 }

@@ -1,6 +1,6 @@
 package config
 
-func getOrDefault(c configSource, key string, defaultValue interface{}) interface{} {
+func getOrDefault(c Util, key string, defaultValue interface{}) interface{} {
 	val := c.Get(key)
 	if val == nil {
 		val = defaultValue
