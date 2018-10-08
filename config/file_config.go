@@ -15,8 +15,8 @@ type fileConfigSource struct {
 }
 
 func newFileConfigSource(configPath string, lgr *logm.Logm) configSource {
-	lgr.Verbose("Initializing FileConfigSource")
 	var c fileConfigSource
+	lgr.Verbose("Initializing %s config source", c.Name())
 	c.logger = lgr
 
 	var joinedPath string
@@ -42,12 +42,8 @@ func newFileConfigSource(configPath string, lgr *logm.Logm) configSource {
 		return nil
 	}
 
-	lgr.Verbose("Initialized FileConfigSource")
+	lgr.Verbose("Initialized %s config source", c.Name())
 	return c
-}
-
-func (c fileConfigSource) ordinal() int {
-	return 100
 }
 
 func (c fileConfigSource) Get(key string) interface{} {
@@ -77,5 +73,11 @@ func (c fileConfigSource) Subscribe(key string, callback func(key string, value 
 }
 
 func (c fileConfigSource) Name() string {
-	return "File"
+	return "file"
 }
+
+func (c fileConfigSource) ordinal() int {
+	return 100
+}
+
+//

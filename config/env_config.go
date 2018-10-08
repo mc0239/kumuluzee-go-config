@@ -12,14 +12,10 @@ type envConfigSource struct {
 }
 
 func newEnvConfigSource(lgr *logm.Logm) configSource {
-	lgr.Verbose("Initializing EnvConfigSource")
 	var c envConfigSource
-	lgr.Verbose("Initialized EnvConfigSource")
+	lgr.Verbose("Initializing %s config source", c.Name())
+	lgr.Verbose("Initialized %s config source", c.Name())
 	return c
-}
-
-func (c envConfigSource) ordinal() int {
-	return 300
 }
 
 func (c envConfigSource) Get(key string) interface{} {
@@ -39,8 +35,14 @@ func (c envConfigSource) Subscribe(key string, callback func(key string, value s
 }
 
 func (c envConfigSource) Name() string {
-	return "Environment"
+	return "env"
 }
+
+func (c envConfigSource) ordinal() int {
+	return 300
+}
+
+//
 
 // https://github.com/kumuluz/kumuluzee/blob/master/common/src/main/java/com/kumuluz/ee/configuration/sources/EnvironmentConfigurationSource.java#L224
 func getPossibleNames(key string) []string {
