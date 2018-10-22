@@ -12,7 +12,7 @@ func loadServiceConfiguration(conf Util) (envName, name, version string, startRD
 	if v, ok := conf.GetString("kumuluzee.version"); ok {
 		version = v
 	} else {
-		envName = "1.0.0"
+		version = "1.0.0"
 	}
 
 	if sdl, ok := conf.GetInt("kumuluzee.config.start-retry-delay-ms"); ok {
