@@ -2,7 +2,7 @@
 
 KumuluzEE Go Config is an open-source configuration management for the KumuluzEE framework. It is a Go package based on [KumuluzEE Config](https://github.com/kumuluz/kumuluzee-config), configuration management library developed for microservices written in Java programming language. It extends basic configuration framework described [here](https://github.com/kumuluz/kumuluzee/wiki/Configuration).
 
-Package provides support for [environment variables](https://github.com/kumuluz/kumuluzee/wiki/Configuration#environment-variables) and [configuration files](https://github.com/kumuluz/kumuluzee/wiki/Configuration#configuration-files) as well as for additional configuration sources (currently supported: Consul).
+Package provides support for [environment variables](https://github.com/kumuluz/kumuluzee/wiki/Configuration#environment-variables) and [configuration files](https://github.com/kumuluz/kumuluzee/wiki/Configuration#configuration-files) as well as for additional configuration sources Consul and etcd.
 
 KumuluzEE Go Config follows the idea of an unified configuration API for the framework and provides additional configuration sources which can be utilised with a standard KumuluzEE configuration interface.
 
@@ -16,14 +16,14 @@ $ go get github.com/mc0239/kumuluzee-go-config/config
 
 ## Setup
 
-In order to connect to Consul, you must properly set configuration files. For more information check sections **Configuring Consul**  in [KumuluzEE Config's section Usage](https://github.com/kumuluz/kumuluzee-config#usage).
+In order to connect to Consul and etcd, you must properly set configuration files. For more information check sections **Configuring Consul** and **Configuring etcd** in [KumuluzEE Config's section Usage](https://github.com/kumuluz/kumuluzee-config#usage).
 
-Properties in Consul are stored in a specific matter. For more information check sections  **Configuration properties inside Consul** in [KumuluzEE Config's section Usage](https://github.com/kumuluz/kumuluzee-config#usage).
+Properties in Consul and etcd are stored in a specific matter. For more information check sections  **Configuration properties inside Consul** and **Configuration properties inside etcd** in [KumuluzEE Config's section Usage](https://github.com/kumuluz/kumuluzee-config#usage).
 
 
 **Configuration source priorities**
 
-Each configuration source has its own priority, meaning values from configuration sources with lower priories can be overwritten with values from higher. Properties from configuration files has the lowest priority, which can be overwritten with properties from additional configuration sources (i.e. Consul), while properties defined with environmental variables have the highest priority.
+Each configuration source has its own priority, meaning values from configuration sources with lower priories can be overwritten with values from higher. Properties from configuration files has the lowest priority, which can be overwritten with properties from additional configuration sources (i.e. Consul or etcd), while properties defined with environmental variables have the highest priority.
 
 ## Usage
 
@@ -37,7 +37,7 @@ Properties can be held in a struct using `config.Bundle` or retrieved by using `
 
 **fields** (struct pointer): struct that will be populated with configuration properties. Fields in the struct that will be populated must be exported (starting with an upper-case letter). By default, configuration key is equal to field name, but with first letter lower-cased. Fields can use custom key names by specifying `config` tag. Watches can be set on fields by using `config` tag aswell.
 
-**options** (config.Options): can be used to set an additional configuration source (Consul) or custom configuration file path.
+**options** (config.Options): can be used to set an additional configuration source (Consul or etcd) or custom configuration file path.
 
 ```go
 // import package
@@ -68,7 +68,7 @@ config.NewBundle("", &myconf, config.Options{})
 
 *config.NewUtil(options)*
 
-**options** (config.Options): can be used to set an additional configuration source (Consul) or custom configuration file path.
+**options** (config.Options): can be used to set an additional configuration source (Consul or etcd) or custom configuration file path.
 
 ```go
 // import package
@@ -104,7 +104,7 @@ Variable `ok` will evaluate to `true` if key exists and value is successfully ty
 
 ### Watches
 
-Since configuration properties in Consul can be updated during microservice runtime, they have to be dynamically updated inside the running microservices. This behaviour can be enabled with watches.
+Since configuration properties in Consul or etcd can be updated during microservice runtime, they have to be dynamically updated inside the running microservices. This behaviour can be enabled with watches.
 
 If watch is enabled on a field, its value will be dynamically updated on any change in configuration source, as long as new value is of a proper type. For example, if value in configuration store is set to `'string'` type and is changed to a non-string value, field value will not be updated.
 
@@ -118,7 +118,7 @@ confUtil.Subscribe(watchKey, func(key string, value string) {
 
 #### Retry delays
 
-Consul implementation supports retry delays on watch connection errors. Since they use increasing exponential delay, two parameters need to be specified:
+Consul and etcd implementations support retry delays on watch connection errors. Since they use increasing exponential delay, two parameters need to be specified:
 
 * `kumuluzee.config.start-retry-delay-ms`, which sets the retry delay duration in ms on first error - default: 500
 * `kumuluzee.config.max-retry-delay-ms`, which sets the maximum delay duration in ms on consecutive errors - default: 900000 (15 min)
