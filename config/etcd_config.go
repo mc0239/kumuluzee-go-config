@@ -28,7 +28,10 @@ func newEtcdConfigSource(conf Util, lgr *logm.Logm) configSource {
 	var etcdAddress string
 	if addr, ok := conf.GetString("kumuluzee.config.etcd.hosts"); ok {
 		etcdAddress = addr
+	} else {
+		etcdAddress = "http://localhost:2379"
 	}
+
 	if client, err := createEtcdClient(etcdAddress); err == nil {
 		lgr.Info("etcd client address set to %v", etcdAddress)
 		etcdConfig.client = client

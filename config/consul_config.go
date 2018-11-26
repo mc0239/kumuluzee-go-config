@@ -27,7 +27,10 @@ func newConsulConfigSource(conf Util, lgr *logm.Logm) configSource {
 	var consulAddress string
 	if addr, ok := conf.GetString("kumuluzee.config.consul.hosts"); ok {
 		consulAddress = addr
+	} else {
+		consulAddress = "http://localhost:8500"
 	}
+
 	if client, err := createConsulClient(consulAddress); err == nil {
 		lgr.Info("Consul client address set to %v", consulAddress)
 		consulConfig.client = client
