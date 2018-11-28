@@ -12,7 +12,7 @@ import (
 // Util should be initialized with config.NewUtil() function
 type Util struct {
 	configSources []configSource
-	Logger        logm.Logm
+	logger        *logm.Logm
 }
 
 // Bundle is used for filling a user-defined struct with config values.
@@ -26,11 +26,14 @@ type Bundle struct {
 
 // Options struct is used when instantiating a new Util or Bundle.
 type Options struct {
-	// Additional configuration source to connect to. Possible values are: "consul"
-	Extension string
 	// ConfigPath is a path to configuration file, including the configuration file name.
 	// Passing an empty string will default to config/config.yaml
 	ConfigPath string
+	// Additional configuration source to connect to. Possible values are: "consul", "etcd"
+	Extension string
+	// Additional configuration source's namespace to use (i.e. path prefix). Setting this to a
+	// non-empty value overwrites default namespace or namespace defined in configuration file
+	ExtensionNamespace string
 	// LogLevel can be used to limit the amount of logging output. Default log level is 0. Level 4
 	// will only output Warnings and Errors, and level 5 will only output errors.
 	// See package github.com/mc0239/logm for more details on logging and log levels.
@@ -64,7 +67,7 @@ func NewUtil(options Options) Util {
 
 	k := Util{
 		configs,
-		lgr,
+		&lgr,
 	}
 
 	k.sortConfigSources()
@@ -74,10 +77,10 @@ func NewUtil(options Options) Util {
 	var extConfigSource configSource
 	switch options.Extension {
 	case "consul":
-		extConfigSource = newConsulConfigSource(k, &lgr)
+		extConfigSource = newConsulConfigSource(k, options.ExtensionNamespace, &lgr)
 		break
 	case "etcd":
-		extConfigSource = newEtcdConfigSource(k, &lgr)
+		extConfigSource = newEtcdConfigSource(k, options.ExtensionNamespace, &lgr)
 		break
 	case "":
 		// no extension

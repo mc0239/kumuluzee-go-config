@@ -16,11 +16,11 @@ type etcdConfigSource struct {
 	client          *client.Client
 	startRetryDelay int64
 	maxRetryDelay   int64
-	path            string
+	namespace       string
 	logger          *logm.Logm
 }
 
-func newEtcdConfigSource(conf Util, lgr *logm.Logm) configSource {
+func newEtcdConfigSource(conf Util, namespace string, lgr *logm.Logm) configSource {
 	var etcdConfig etcdConfigSource
 	lgr.Verbose("Initializing %s config source", etcdConfig.Name())
 	etcdConfig.logger = lgr
@@ -44,9 +44,19 @@ func newEtcdConfigSource(conf Util, lgr *logm.Logm) configSource {
 	etcdConfig.maxRetryDelay = maxRD
 	lgr.Verbose("start-retry-delay-ms=%d, max-retry-delay-ms=%d", etcdConfig.startRetryDelay, etcdConfig.maxRetryDelay)
 
-	etcdConfig.path = fmt.Sprintf("environments/%s/services/%s/%s/config", envName, name, version)
+	etcdConfig.namespace = fmt.Sprintf("environments/%s/services/%s/%s/config", envName, name, version)
+	// namespace can be overwritten from configuration file ...
+	if ns, ok := conf.GetString("kumuluzee.config.namespace"); ok {
+		if ns != "" {
+			etcdConfig.namespace = ns
+		}
+	}
+	// ... or programmatically by passing it into config.Options
+	if namespace != "" {
+		etcdConfig.namespace = namespace
+	}
 
-	lgr.Info("etcd key-value namespace: %s", etcdConfig.path)
+	lgr.Info("etcd key-value namespace: %s", etcdConfig.namespace)
 	lgr.Verbose("Initialized %s config source", etcdConfig.Name())
 	return etcdConfig
 }
@@ -55,9 +65,9 @@ func (c etcdConfigSource) Get(key string) interface{} {
 	kv := client.NewKeysAPI(*c.client)
 
 	key = strings.Replace(key, ".", "/", -1)
-	//fmt.Printf("KV path: %s\n", path.Join(c.path, key))
+	//fmt.Printf("KV path: %s\n", path.Join(c.namespace, key))
 
-	resp, err := kv.Get(context.Background(), path.Join(c.path, key), nil)
+	resp, err := kv.Get(context.Background(), path.Join(c.namespace, key), nil)
 	if err != nil {
 		c.logger.Warning("Error getting value: %v", err)
 		return nil
@@ -88,7 +98,7 @@ func (c etcdConfigSource) watch(key string, previousValue string, retryDelay int
 	key = strings.Replace(key, ".", "/", -1)
 	kv := client.NewKeysAPI(*c.client)
 
-	watcher := kv.Watcher(path.Join(c.path, key), nil)
+	watcher := kv.Watcher(path.Join(c.namespace, key), nil)
 
 	resp, err := watcher.Next(context.Background())
 	if err != nil {

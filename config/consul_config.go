@@ -15,11 +15,11 @@ type consulConfigSource struct {
 	client          *api.Client
 	startRetryDelay int64
 	maxRetryDelay   int64
-	path            string
+	namespace       string
 	logger          *logm.Logm
 }
 
-func newConsulConfigSource(conf Util, lgr *logm.Logm) configSource {
+func newConsulConfigSource(conf Util, namespace string, lgr *logm.Logm) configSource {
 	var consulConfig consulConfigSource
 	lgr.Verbose("Initializing %s config source", consulConfig.Name())
 	consulConfig.logger = lgr
@@ -43,9 +43,19 @@ func newConsulConfigSource(conf Util, lgr *logm.Logm) configSource {
 	consulConfig.maxRetryDelay = maxRD
 	lgr.Verbose("start-retry-delay-ms=%d, max-retry-delay-ms=%d", consulConfig.startRetryDelay, consulConfig.maxRetryDelay)
 
-	consulConfig.path = fmt.Sprintf("environments/%s/services/%s/%s/config", envName, name, version)
+	consulConfig.namespace = fmt.Sprintf("environments/%s/services/%s/%s/config", envName, name, version)
+	// namespace can be overwritten from configuration file ...
+	if ns, ok := conf.GetString("kumuluzee.config.namespace"); ok {
+		if ns != "" {
+			consulConfig.namespace = ns
+		}
+	}
+	// ... or programmatically by passing it into config.Options
+	if namespace != "" {
+		consulConfig.namespace = namespace
+	}
 
-	lgr.Info("%s key-value namespace: %s", consulConfig.Name(), consulConfig.path)
+	lgr.Info("%s key-value namespace: %s", consulConfig.Name(), consulConfig.namespace)
 	lgr.Verbose("Initialized %s config source", consulConfig.Name())
 	return consulConfig
 }
@@ -55,9 +65,9 @@ func (c consulConfigSource) Get(key string) interface{} {
 	kv := c.client.KV()
 
 	key = strings.Replace(key, ".", "/", -1)
-	//fmt.Printf("KV path: %s\n", path.Join(c.path, key))
+	//fmt.Printf("KV path: %s\n", path.Join(c.namespace, key))
 
-	pair, _, err := kv.Get(path.Join(c.path, key), nil)
+	pair, _, err := kv.Get(path.Join(c.namespace, key), nil)
 	if err != nil {
 		c.logger.Warning("Error getting value: %v", err)
 		return nil
@@ -72,7 +82,7 @@ func (c consulConfigSource) Get(key string) interface{} {
 }
 
 func (c consulConfigSource) Subscribe(key string, callback func(key string, value string)) {
-	c.logger.Info("Creating a watch for key %s, source: %s", key, c.Name())
+	c.logger.Info("Creating a watch: key=%s. namespace=%s source=%s", key, c.namespace, c.Name())
 	go c.watch(key, "", c.startRetryDelay, callback, 0)
 }
 
@@ -93,9 +103,10 @@ func (c consulConfigSource) watch(key string, previousValue string, retryDelay i
 		WaitTime:  10 * time.Minute,
 	}
 
-	c.logger.Verbose("Setting a watch on key %s with %s wait time", key, q.WaitTime)
 	key = strings.Replace(key, ".", "/", -1)
-	pair, meta, err := c.client.KV().Get(path.Join(c.path, key), &q)
+	c.logger.Verbose("Setting a watch on key %s with %s wait time", key, q.WaitTime)
+
+	pair, meta, err := c.client.KV().Get(path.Join(c.namespace, key), &q)
 
 	if err != nil {
 		c.logger.Warning("Watch on %s failed with error: %s, retry delay: %d ms", key, err.Error(), retryDelay)
