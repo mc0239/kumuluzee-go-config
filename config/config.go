@@ -164,7 +164,7 @@ func NewBundle(prefixKey string, fields interface{}, options Options) Bundle {
 // Subscribe creates a watch on a given configuration key.
 // Note that watch will be enabled on an extension configuration source, if one has been defined
 // when Util was created.
-// When value in configuration updated, callback is fired with the key and the new value.
+// When value in configuration updates, callback is fired with the key and the new value.
 func (c Util) Subscribe(key string, callback func(key string, value string)) {
 
 	// find extension configSource and deploy a watch
