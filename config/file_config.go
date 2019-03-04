@@ -43,7 +43,7 @@ func newFileConfigSource(configPath string, lgr *logm.Logm) configSource {
 	var joinedPath string
 	if configPath == "" {
 		// set default
-		joinedPath = "config/config.yaml"
+		joinedPath = "config.yaml"
 	} else {
 		joinedPath = configPath
 	}
